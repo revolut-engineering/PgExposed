@@ -4,6 +4,7 @@ plugins {
     id 'net.researchgate.release' version '2.7.0'
     id "org.jetbrains.kotlin.jvm" version "1.3.21"
     id 'maven-publish'
+    id "jacoco"
 }
 
 apply from: "$rootDir/gradle/versioning.gradle"
@@ -51,8 +52,11 @@ dependencies {
     testCompile 'com.opentable.components:otj-pg-embedded:0.12.0'
 }
 
+tasks.withType(JavaCompile) {
+    options.incremental = true
+}
+
 test {
-    jvmArgs "-XX:MaxPermSize=256m"
     testLogging {
         // set options for log level LIFECYCLE
         events "failed"
@@ -70,6 +74,15 @@ test {
     }
 }
 
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+check.dependsOn jacocoTestReport
+
 publishing {
     publications {
         pgexposed(MavenPublication) {
@@ -77,6 +90,12 @@ publishing {
             artifact sourcesJar
             artifactId = 'pgexposed'
         }
+    }
+}
+
+release {
+    git {
+        requireBranch = ''
     }
 }
 
