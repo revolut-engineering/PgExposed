@@ -101,9 +101,10 @@ release {
 bintray {
     user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
     key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
+    publications = ['pgexposed']
     pkg {
         userOrg = 'pgexposed'
-        repo = 'pgexposed'
+        repo = 'PgExposed'
         name = 'pgexposed'
         licenses = ['Apache-2.0']
         vcsUrl = 'https://github.com/spolnik/PgExposed.git'

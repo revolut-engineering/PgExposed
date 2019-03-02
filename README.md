@@ -4,10 +4,10 @@
 PgExposed - Kotlin PostgreSQL Library
 ==================
 
-_Exposed_ is a prototype for a lightweight SQL library written over JDBC driver for [Kotlin](https://github.com/JetBrains/kotlin) language.
+_PgExposed_ is a lightweight PostgreSQL library written over Postgres JDBC driver for [Kotlin](https://github.com/JetBrains/kotlin) language.
 It does have two layers of database access: typesafe SQL wrapping DSL and lightweight data access objects
 
-Exposed is currently available for maven/gradle builds at https://bintray.com/kotlin/exposed/exposed/view#
+PgExposed is currently available for maven/gradle builds at https://bintray.com/pgexposed/pgexposed/pgexposed/view#
 
 You can inspect project [roadmap](ROADMAP.md) to see what's coming next or look into [Change log](ChangeLog.md) for list of bug fixes and improvements.
 
@@ -18,8 +18,8 @@ Currently supported database dialects:
 
 ## SQL DSL sample:
 ```kotlin
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.pgexposed.sql.*
+import org.pgexposed.sql.transactions.transaction
 
 object Users : Table() {
     val id = varchar("id", 10).primaryKey() // Column<String>
@@ -168,9 +168,9 @@ Outputs:
 
 ## DAO sample
 ```kotlin
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.dao.*
+import org.pgexposed.sql.*
+import org.pgexposed.sql.transactions.transaction
+import org.pgexposed.dao.*
 
 object Users : IntIdTable() {
     val name = varchar("name", 50).index()
@@ -254,4 +254,4 @@ Outputs:
     Adults: b, c
 ```
 
-More examples and documentation on the [wiki](https://github.com/JetBrains/Exposed/wiki).
+More examples and documentation on the [wiki](https://github.com/spolnik/Exposed/wiki).
