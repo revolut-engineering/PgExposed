@@ -6,6 +6,8 @@ plugins {
     id 'maven-publish'
 }
 
+apply from: "$rootDir/gradle/versioning.gradle"
+
 group = 'org.pgexposed'
 
 compileJava.options.encoding = 'UTF-8'
@@ -54,7 +56,7 @@ test {
     testLogging {
         events "PASSED", "FAILED", "SKIPPED"
         showStandardStreams = true
-        exceptionFormat = 'full'
+        exceptionFormat = 'short'
     }
 }
 
