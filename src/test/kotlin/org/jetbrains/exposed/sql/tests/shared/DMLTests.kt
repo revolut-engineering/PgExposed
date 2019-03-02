@@ -10,7 +10,6 @@ import org.jetbrains.exposed.sql.Random
 import org.jetbrains.exposed.sql.statements.BatchDataInconsistentException
 import org.jetbrains.exposed.sql.statements.BatchInsertStatement
 import org.jetbrains.exposed.sql.tests.DatabaseTestsBase
-import org.jetbrains.exposed.sql.tests.TestDB
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.vendors.*
 import org.joda.time.DateTime
@@ -75,12 +74,12 @@ object DMLTestsData {
 }
 
 class DMLTests : DatabaseTestsBase() {
-    fun withCitiesAndUsers(exclude: List<TestDB> = emptyList(), statement: Transaction.(cities: DMLTestsData.Cities, users: DMLTestsData.Users, userData: DMLTestsData.UserData) -> Unit) {
+    fun withCitiesAndUsers(statement: Transaction.(cities: DMLTestsData.Cities, users: DMLTestsData.Users, userData: DMLTestsData.UserData) -> Unit) {
         val Users = DMLTestsData.Users
         val Cities = DMLTestsData.Cities
         val UserData = DMLTestsData.UserData
 
-        withTables(exclude, Cities, Users, UserData) {
+        withTables(Cities, Users, UserData) {
             val saintPetersburgId = Cities.insert {
                 it[name] = "St. Petersburg"
             } get Cities.id
@@ -169,35 +168,6 @@ class DMLTests : DatabaseTestsBase() {
     }
 
     @Test
-    fun testUpdateWithLimit01() {
-        withCitiesAndUsers(listOf(TestDB.SQLITE, TestDB.POSTGRESQL)) { cities, users, userData ->
-            val aNames = users.slice(users.name).select { users.id like "a%" }.map { it[users.name] }
-            assertEquals(2, aNames.size)
-
-            users.update({ users.id like "a%" }, 1) {
-                it[users.id] = "NewName"
-            }
-
-            val unchanged = users.slice(users.name).select { users.id like "a%" }.count()
-            val changed = users.slice(users.name).select { users.id eq "NewName" }.count()
-            assertEquals(1, unchanged)
-            assertEquals(1, changed)
-        }
-    }
-
-    @Test
-    fun testUpdateWithLimit02() {
-        val dialects = TestDB.values().toList() - listOf(TestDB.SQLITE, TestDB.POSTGRESQL)
-        withCitiesAndUsers(dialects) { cities, users, userData ->
-            expectException<UnsupportedByDialectException> {
-                users.update({ users.id like "a%" }, 1) {
-                    it[users.id] = "NewName"
-                }
-            }
-        }
-    }
-
-    @Test
     fun testPreparedStatement() {
         withCitiesAndUsers { cities, users, userData ->
             val name = users.select { users.id eq "eugene" }.first()[users.name]
@@ -218,17 +188,6 @@ class DMLTests : DatabaseTestsBase() {
             users.deleteWhere { users.name like "%thing" }
             val hasSmth = users.slice(users.id).select { users.name.like("%thing") }.any()
             assertEquals(false, hasSmth)
-        }
-    }
-
-    @Test
-    fun testDeleteWithLimitAndOffset01() {
-        withCitiesAndUsers(exclude = listOf(TestDB.SQLITE, TestDB.POSTGRESQL, TestDB.ORACLE)) { cities, users, userData ->
-            userData.deleteWhere(limit = 1) { userData.value eq 20 }
-            userData.slice(userData.user_id, userData.value).select { userData.value eq 20 }.let {
-                assertEquals(1, it.count())
-                assertEquals("eugene", it.single()[userData.user_id])
-            }
         }
     }
 
@@ -332,15 +291,15 @@ class DMLTests : DatabaseTestsBase() {
     // triple join
     @Test
     fun testJoin04() {
-        val Numbers = object : Table() {
+        val Numbers = object : Table("Numbers") {
             val id = integer("id").primaryKey()
         }
 
-        val Names = object : Table() {
+        val Names = object : Table("Names") {
             val name = varchar("name", 10).primaryKey()
         }
 
-        val Map = object : Table() {
+        val Map = object : Table("Map") {
             val id_ref = integer("id_ref") references Numbers.id
             val name_ref = varchar("name_ref", 10) references Names.name
         }
@@ -611,7 +570,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupConcat() {
-        withCitiesAndUsers(listOf(TestDB.SQLITE)) { cities, users, _ ->
+        withCitiesAndUsers { cities, users, _ ->
             fun <T : String?> GroupConcat<T>.checkExcept(vararg dialects: KClass<out DatabaseDialect>, assert: (Map<String, String?>) ->Unit) {
                 try {
                     val result = cities.leftJoin(users)
@@ -625,22 +584,19 @@ class DMLTests : DatabaseTestsBase() {
                     assertTrue(e.dialect::class in dialects, e.message!! )
                 }
             }
-            users.name.groupConcat().checkExcept(PostgreSQLDialect::class, SQLServerDialect::class, OracleDialect::class) {
-                assertEquals(3, it.size)
-            }
 
-            users.name.groupConcat(separator = ", ").checkExcept(OracleDialect::class) {
+            users.name.groupConcat(separator = ", ").checkExcept {
                 assertEquals(3, it.size)
                 assertEquals("Andrey", it["St. Petersburg"])
-                val sorted = if (currentDialect is MysqlDialect || currentDialect is SQLServerDialect) "Eugene, Sergey" else "Sergey, Eugene"
+                val sorted = "Sergey, Eugene"
                 assertEquals(sorted, it["Munich"])
                 assertNull(it["Prague"])
             }
 
-            users.name.groupConcat(separator = " | ", distinct = true).checkExcept(PostgreSQLDialect::class, OracleDialect::class) {
+            users.name.groupConcat(separator = " | ", distinct = true).checkExcept(PostgreSQLDialect::class) {
                 assertEquals(3, it.size)
                 assertEquals("Andrey", it["St. Petersburg"])
-                val sorted = if (currentDialect is MysqlDialect || currentDialect is SQLServerDialect) "Eugene | Sergey" else "Sergey | Eugene"
+                val sorted = "Sergey | Eugene"
                 assertEquals(sorted, it["Munich"])
                 assertNull(it["Prague"])
             }
@@ -674,11 +630,6 @@ class DMLTests : DatabaseTestsBase() {
         }
     }
 
-    private fun isNullFirst() = when (currentDialect) {
-        is OracleDialect, is PostgreSQLDialect -> true
-        else -> false
-    }
-
     @Test
     fun orderBy02() {
         withCitiesAndUsers { _, users, _ ->
@@ -686,8 +637,7 @@ class DMLTests : DatabaseTestsBase() {
             assertEquals(5, r.size)
             val usersWithoutCities = listOf("alex", "smth")
             val otherUsers = listOf("eugene", "sergey", "andrey")
-            val expected = if(isNullFirst()) usersWithoutCities + otherUsers
-                else otherUsers + usersWithoutCities
+            val expected = usersWithoutCities + otherUsers
             expected.forEachIndexed { index, e ->
                 assertEquals(e, r[index][users.id])
             }
@@ -697,12 +647,11 @@ class DMLTests : DatabaseTestsBase() {
     @Test
     fun orderBy03() {
         withCitiesAndUsers { cities, users, userData ->
-            val r = users.selectAll().orderBy(users.cityId to false, users.id to true).toList()
+            val r = users.selectAll().orderBy(users.cityId to SortOrder.DESC, users.id to SortOrder.ASC).toList()
             assertEquals(5, r.size)
             val usersWithoutCities = listOf("alex", "smth")
             val otherUsers = listOf("eugene", "sergey", "andrey")
-            val expected = if(isNullFirst()) usersWithoutCities + otherUsers
-                else otherUsers + usersWithoutCities
+            val expected = usersWithoutCities + otherUsers
             expected.forEachIndexed { index, e ->
                 assertEquals(e, r[index][users.id])
             }
@@ -728,8 +677,7 @@ class DMLTests : DatabaseTestsBase() {
             assertEquals(5, r.size)
             val usersWithoutCities = listOf("alex", "smth")
             val otherUsers = listOf("eugene", "sergey", "andrey")
-            val expected = if(isNullFirst()) usersWithoutCities + otherUsers
-                else otherUsers + usersWithoutCities
+            val expected = usersWithoutCities + otherUsers
             expected.forEachIndexed { index, e ->
                 assertEquals(e, r[index][users.id])
             }
@@ -879,8 +827,7 @@ class DMLTests : DatabaseTestsBase() {
     fun testLengthWithCount01() {
         class LengthFunction<T: ExpressionWithColumnType<String>>(val exp: T) : Function<Int>(IntegerColumnType()) {
             override fun toSQL(queryBuilder: QueryBuilder): String
-                = if (currentDialect is SQLServerDialect) "LEN(${exp.toSQL(queryBuilder)})"
-                else "LENGTH(${exp.toSQL(queryBuilder)})"
+                = "LENGTH(${exp.toSQL(queryBuilder)})"
         }
         withCitiesAndUsers { cities, _, _ ->
             val sumOfLength = LengthFunction(cities.name).sum()
@@ -894,7 +841,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertSelect01() {
-        withCitiesAndUsers(exclude = listOf(TestDB.ORACLE)) { cities, users, userData ->
+        withCitiesAndUsers { cities, users, userData ->
             val substring = users.name.substring(1, 2)
             cities.insert(users.slice(substring).selectAll().orderBy(users.id).limit(2))
 
@@ -1115,9 +1062,7 @@ class DMLTests : DatabaseTestsBase() {
             val name = varchar("foo", 10).uniqueIndex()
         }
 
-        val insertIgnoreSupportedDB = TestDB.values().toList() -
-                listOf(TestDB.SQLITE, TestDB.MYSQL, TestDB.H2_MYSQL, TestDB.POSTGRESQL)
-        withTables(insertIgnoreSupportedDB, idTable) {
+        withTables(idTable) {
             idTable.insertIgnoreAndGetId {
                 it[idTable.name] = "1"
             }
@@ -1415,7 +1360,7 @@ class DMLTests : DatabaseTestsBase() {
         val time = DateTime.now()
         val eOne = DMLTestsData.E.ONE
         val dec = BigDecimal("239.42")
-        withTables(excludeSettings = listOf(TestDB.MYSQL, TestDB.MARIADB), tables = *arrayOf(tbl)) {
+        withTables(tables = *arrayOf(tbl)) {
             tbl.insert {
                 it[n] = 101
                 it[s] = "123456789"
@@ -1575,24 +1520,6 @@ class DMLTests : DatabaseTestsBase() {
             val resultRow = t.slice(rand).selectAll().limit(1).single()
             assert(resultRow[rand] is BigDecimal)
             println(resultRow[rand])
-        }
-    }
-
-    // GitHub issue #98: Parameter index out of range when using Table.replace
-    @Test
-    fun testReplace01() {
-        val NewAuth = object : Table() {
-            val username = varchar("username", 16).primaryKey()
-            val session = binary("session", 64)
-            val timestamp = long("timestamp").default(0)
-            val serverID = varchar("serverID", 64).default("")
-        }
-        // Only MySQL supp
-        withTables(TestDB.values().toList() - listOf(TestDB.MYSQL, TestDB.POSTGRESQL), NewAuth) {
-            NewAuth.replace {
-                it[username] = "username"
-                it[session] = "session".toByteArray()
-            }
         }
     }
 

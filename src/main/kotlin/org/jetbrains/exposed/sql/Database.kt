@@ -73,13 +73,7 @@ class Database private constructor(val connector: () -> Connection) {
         private val dialects = ConcurrentHashMap<String, () ->DatabaseDialect>()
 
         init {
-            registerDialect(H2Dialect.dialectName) { H2Dialect() }
-            registerDialect(MysqlDialect.dialectName) { MysqlDialect() }
             registerDialect(PostgreSQLDialect.dialectName) { PostgreSQLDialect() }
-            registerDialect(SQLiteDialect.dialectName) { SQLiteDialect() }
-            registerDialect(OracleDialect.dialectName) { OracleDialect() }
-            registerDialect(SQLServerDialect.dialectName) { SQLServerDialect() }
-            registerDialect(MariaDBDialect.dialectName) { MariaDBDialect() }
         }
 
         fun registerDialect(prefix:String, dialect: () -> DatabaseDialect) {

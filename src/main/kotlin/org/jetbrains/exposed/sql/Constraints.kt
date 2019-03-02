@@ -1,7 +1,6 @@
 package org.jetbrains.exposed.sql
 
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import org.jetbrains.exposed.sql.vendors.inProperCase
 import java.sql.DatabaseMetaData
@@ -62,11 +61,7 @@ data class ForeignKeyConstraint(val fkName: String,
 
     override fun createStatement() = listOf("ALTER TABLE $fromTable ADD" + (if (fkName.isNotBlank()) " CONSTRAINT $fkName" else "") + foreignKeyPart)
 
-    override fun dropStatement() = listOf("ALTER TABLE $fromTable DROP " +
-            when (currentDialect) {
-                is MysqlDialect -> "FOREIGN KEY "
-                else -> "CONSTRAINT "
-            } + fkName)
+    override fun dropStatement() = listOf("ALTER TABLE $fromTable DROP CONSTRAINT $fkName")
 
     override fun modifyStatement() = dropStatement() + createStatement()
 
@@ -86,19 +81,9 @@ data class CheckConstraint(val tableName: String, val checkName: String, val che
 
     internal val checkPart = " CONSTRAINT $checkName CHECK ($checkOp)"
 
-    override fun createStatement(): List<String> {
-        return if (currentDialect is MysqlDialect) {
-            exposedLogger.warn("Creation of CHECK constraints is not currently supported by MySQL")
-            listOf()
-        } else listOf("ALTER TABLE $tableName ADD$checkPart")
-    }
+    override fun createStatement() = listOf("ALTER TABLE $tableName ADD$checkPart")
 
-    override fun dropStatement(): List<String> {
-        return if (currentDialect is MysqlDialect) {
-            exposedLogger.warn("Deletion of CHECK constraints is not currently supported by MySQL")
-            listOf()
-        } else listOf("ALTER TABLE $tableName DROP CONSTRAINT $checkName")
-    }
+    override fun dropStatement() = listOf("ALTER TABLE $tableName DROP CONSTRAINT $checkName")
 
     override fun modifyStatement() = dropStatement() + createStatement()
 }

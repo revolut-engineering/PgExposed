@@ -1,7 +1,6 @@
 package org.jetbrains.exposed.sql.tests.shared
 
 import org.jetbrains.exposed.sql.Transaction
-import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import org.jetbrains.exposed.sql.vendors.currentDialectIfAvailable
 import org.joda.time.DateTime
@@ -48,9 +47,6 @@ fun assertEqualDateTime(d1: DateTime?, d2: DateTime?) {
         d1 == null && d2 != null -> error("d1 is null while d2 is not on ${currentDialect.name}")
         d2 == null -> error ("d1 is not null while d2 is null on ${currentDialect.name}")
         d1 == null -> error("Impossible")
-        // Mysql doesn't support millis prior 5.6.4
-        (currentDialect as? MysqlDialect)?.isFractionDateTimeSupported() == false ->
-            assertEquals(d1.millis / 1000, d2.millis / 1000,  "Failed on ${currentDialect.name}")
         else -> assertEquals(d1.millis, d2.millis,   "Failed on ${currentDialect.name}")
     }
 }

@@ -16,11 +16,6 @@ You can inspect project [roadmap](ROADMAP.md) to see what's coming next or look 
 
 Currently supported database dialects:
 * PostgreSQL
-* MySQL
-* [Oracle](ORACLE.md)
-* SQLite
-* H2
-* [SQL Server](SQLServer.md)
 
 ## SQL DSL sample:
 ```kotlin

@@ -1,8 +1,6 @@
 package org.jetbrains.exposed.sql
 
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.H2Dialect
-import org.jetbrains.exposed.sql.vendors.SQLiteDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import org.jetbrains.exposed.sql.vendors.currentDialectIfAvailable
 
@@ -38,15 +36,11 @@ class Column<T>(val table: Table, val name: String, override val columnType: ICo
         val alterTablePrefix = "ALTER TABLE ${TransactionManager.current().identity(table)} ADD"
         val isLastColumnInPK = indexInPK != null && indexInPK == table.columns.mapNotNull { indexInPK }.max()
         val columnDefinition = when {
-            isOneColumnPK() && (currentDialect is H2Dialect || currentDialect is SQLiteDialect) -> descriptionDdl().removeSuffix(" PRIMARY KEY")
-            !isOneColumnPK() && isLastColumnInPK && currentDialect !is H2Dialect -> ", ADD ${table.primaryKeyConstraint()}"
+            !isOneColumnPK() && isLastColumnInPK -> ", ADD ${table.primaryKeyConstraint()}"
             else -> descriptionDdl()
         }
 
-        val addConstr = if (isLastColumnInPK && currentDialect is H2Dialect) {
-             "$alterTablePrefix ${table.primaryKeyConstraint()}"
-        } else null
-        return listOfNotNull("$alterTablePrefix $columnDefinition", addConstr)
+        return listOfNotNull("$alterTablePrefix $columnDefinition")
     }
 
     override fun modifyStatement() = listOf("ALTER TABLE ${TransactionManager.current().identity(table)} ${currentDialect.modifyColumn(this)}")
@@ -61,11 +55,7 @@ class Column<T>(val table: Table, val name: String, override val columnType: ICo
         append(" ")
         val isPKColumn = indexInPK != null
         val colType = columnType
-        if (currentDialect is SQLiteDialect && colType.isAutoInc && table.columns.any{ it.indexInPK != null}) {
-            append(colType.sqlType().removeSuffix(" AUTOINCREMENT")) // Workaround as SQLite Doesn't support both PK and autoInc in DDL
-        } else {
-            append(colType.sqlType())
-        }
+        append(colType.sqlType())
 
         val _dbDefaultValue = dbDefaultValue
         if (!isPKColumn && _dbDefaultValue != null) {

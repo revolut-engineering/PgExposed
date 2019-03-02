@@ -4,7 +4,6 @@ import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IdTable
 import org.jetbrains.exposed.sql.statements.*
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.SQLServerDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import org.jetbrains.exposed.sql.vendors.inProperCase
 import java.util.*
@@ -60,11 +59,7 @@ fun <Key:Comparable<Key>, T: IdTable<Key>> T.insertAndGetId(body: T.(InsertState
 fun <T:Table, E:Any> T.batchInsert(data: Iterable<E>, ignore: Boolean = false, body: BatchInsertStatement.(E)->Unit): List<ResultRow> {
     if (data.count() == 0) return emptyList()
     fun newBatchStatement() : BatchInsertStatement {
-        return if (currentDialect is SQLServerDialect && this.autoIncColumn != null) {
-            SQLServerBatchInsertStatement(this, ignore)
-        } else {
-            BatchInsertStatement(this, ignore)
-        }
+        return BatchInsertStatement(this, ignore)
     }
     var statement = newBatchStatement()
 

@@ -144,7 +144,10 @@ class Join (val table: ColumnSet) : ColumnSet() {
 }
 
 open class Table(name: String = ""): ColumnSet(), DdlAware {
-    open val tableName = if (name.isNotEmpty()) name else this.javaClass.simpleName.removeSuffix("Table")
+    open val tableName = when {
+        name.isNotEmpty() -> name
+        else -> this.javaClass.simpleName.removeSuffix("Table")
+    }
 
     fun nameInDatabaseCase() = tableName.inProperCase()
 
@@ -483,7 +486,7 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
             Seq(it).createStatement()
         }.orEmpty()
 
-        val addForeignKeysInAlterPart = SchemaUtils.checkCycle(this) && currentDialect !is SQLiteDialect
+        val addForeignKeysInAlterPart = SchemaUtils.checkCycle(this)
 
         val createTableDDL = buildString {
             append("CREATE TABLE ")
@@ -548,9 +551,6 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
                 append("IF EXISTS ")
             }
             append(TransactionManager.current().identity(this@Table))
-            if (currentDialectIfAvailable is OracleDialect) {
-                append(" CASCADE CONSTRAINTS")
-            }
 
             if (currentDialectIfAvailable is PostgreSQLDialect && SchemaUtils.checkCycle(this@Table)) {
                 append(" CASCADE")

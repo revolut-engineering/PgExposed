@@ -3,7 +3,6 @@ package org.jetbrains.exposed.sql
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IdTable
 import org.jetbrains.exposed.sql.statements.DefaultValueMarker
-import org.jetbrains.exposed.sql.vendors.SQLiteDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -214,8 +213,6 @@ class EnumerationNameColumnType<T:Enum<T>>(val klass: KClass<T>, colLength: Int)
 
 private val DEFAULT_DATE_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd").withLocale(Locale.ROOT)
 private val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss.SSSSSS").withLocale(Locale.ROOT)
-private val SQLITE_DATE_TIME_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss")
-private val SQLITE_DATE_STRING_FORMATTER = ISODateTimeFormat.yearMonthDay()
 
 class DateColumnType(val time: Boolean): ColumnType() {
     override fun sqlType(): String  = if (time) currentDialect.dataTypeProvider.dateTimeType() else "DATE"
@@ -242,11 +239,7 @@ class DateColumnType(val time: Boolean): ColumnType() {
         is java.sql.Timestamp -> DateTime(value.time)
         is Int -> DateTime(value.toLong())
         is Long -> DateTime(value)
-        is String -> when {
-            currentDialect is SQLiteDialect && time -> SQLITE_DATE_TIME_STRING_FORMATTER.parseDateTime(value)
-            currentDialect is SQLiteDialect -> SQLITE_DATE_STRING_FORMATTER.parseDateTime(value)
-            else -> value
-        }
+        is String -> value
         // REVIEW
         else -> DEFAULT_DATE_TIME_STRING_FORMATTER.parseDateTime(value.toString())
     }
