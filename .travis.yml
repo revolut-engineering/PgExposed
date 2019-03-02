@@ -12,12 +12,8 @@ cache:
   directories:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
-before_deploy:
-  - git config --local user.name "Jacek Spólnik"
-  - git config --local user.email "jacek.spolnik@gmail.com"
 deploy:
   provider: script
-  script: ./gradlew release -Prelease.useAutomaticVersion=true
-  skip_cleanup: true
+  script: ./deploy.sh
   on:
     branch: master
