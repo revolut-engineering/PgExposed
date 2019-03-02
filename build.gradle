@@ -93,6 +93,7 @@ publishing {
 
 release {
     git {
+        // this is to avoid failure on detached HEAD on TravisCI
         requireBranch = ''
     }
 }
@@ -106,12 +107,12 @@ bintray {
         name = 'pgexposed'
         licenses = ['Apache-2.0']
         vcsUrl = 'https://github.com/spolnik/PgExposed.git'
-    }
-    version {
-        name = version
-        desc = 'PgExposed - async Kotlin Postgres ORM library'
-        released  = new Date()
-        vcsTag = version
+        version {
+            name = version
+            desc = 'PgExposed - async Kotlin Postgres ORM library'
+            released  = new Date()
+            vcsTag = version
+        }
     }
 }
 
