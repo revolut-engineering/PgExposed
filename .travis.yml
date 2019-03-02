@@ -14,7 +14,7 @@ cache:
     - $HOME/.gradle/wrapper/
 deploy:
   provider: script
-  script: ./deploy.sh
+  script: ./gradlew bintrayUpload
   skip_cleanup: true
   on:
     branch: master
