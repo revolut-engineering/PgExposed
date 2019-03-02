@@ -18,5 +18,6 @@ before_deploy:
 deploy:
   provider: script
   script: ./gradlew release
+  skip_cleanup: true
   on:
     branch: master
