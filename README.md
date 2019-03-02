@@ -9,9 +9,7 @@ PgExposed - Kotlin PostgreSQL Library
 _PgExposed_ is a lightweight PostgreSQL library written over Postgres JDBC driver for [Kotlin](https://github.com/JetBrains/kotlin) language.
 It does have two layers of database access: typesafe SQL wrapping DSL and lightweight data access objects
 
-PgExposed is currently available for maven/gradle builds at https://bintray.com/pgexposed/pgexposed/pgexposed/view#
-
-You can inspect project [roadmap](ROADMAP.md) to see what's coming next or look into [Change log](ChangeLog.md) for list of bug fixes and improvements.
+PgExposed is currently available for maven/gradle builds at https://bintray.com/pgexposed/maven/pgexposed/view#
 
 ## Dialects
 
