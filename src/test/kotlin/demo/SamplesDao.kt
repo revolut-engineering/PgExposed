@@ -1,14 +1,14 @@
 package demo.dao
 
-import org.jetbrains.exposed.dao.EntityID
-import org.jetbrains.exposed.dao.IntEntity
-import org.jetbrains.exposed.dao.IntEntityClass
-import org.jetbrains.exposed.dao.IntIdTable
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.pgexposed.dao.EntityID
+import org.pgexposed.dao.IntEntity
+import org.pgexposed.dao.IntEntityClass
+import org.pgexposed.dao.IntIdTable
+import org.pgexposed.sql.Database
+import org.pgexposed.sql.SchemaUtils
+import org.pgexposed.sql.StdOutSqlLogger
+import org.pgexposed.sql.addLogger
+import org.pgexposed.sql.transactions.transaction
 
 object Users : IntIdTable() {
     val name = varchar("name", 50).index()

@@ -91,6 +91,7 @@ publishing {
 release {
     tagTemplate = 'v${version}'
     failOnPublishNeeded = false
+    preCommitText = '[skip travis]'
     git {
         // this is to avoid failure on detached HEAD on TravisCI
         requireBranch = ''
