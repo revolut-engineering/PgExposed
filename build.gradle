@@ -29,10 +29,7 @@ artifacts {
 
 repositories {
     mavenLocal()
-    mavenCentral()
-    maven {
-        url  "https://dl.bintray.com/pgexposed/PgExposed"
-    }
+    jcenter()
 }
 
 dependencies {
@@ -92,6 +89,8 @@ publishing {
 }
 
 release {
+    tagTemplate = 'v${version}'
+    failOnPublishNeeded = false
     git {
         // this is to avoid failure on detached HEAD on TravisCI
         requireBranch = ''
