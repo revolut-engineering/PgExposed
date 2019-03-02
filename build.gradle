@@ -42,16 +42,16 @@ task sourcesJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.allSource
 }
 
-task exposedDialectTestWithDocker(type: Test) {
-    systemProperties['exposed.test.dialects'] = dialect
+task pgexposedDialectTestWithDocker(type: Test) {
+    systemProperties['pgexposed.test.dialects'] = dialect
 }
 
-exposedDialectTestWithDocker.doFirst {
+pgexposedDialectTestWithDocker.doFirst {
     def containerInfo = dockerCompose.servicesInfos[dialect]
-    systemProperty 'exposed.test.' + dialect + '.host', containerInfo.host
+    systemProperty 'pgexposed.test.' + dialect + '.host', containerInfo.host
 }
 
-dockerCompose.isRequiredBy(exposedDialectTestWithDocker)
+dockerCompose.isRequiredBy(pgexposedDialectTestWithDocker)
 
 dockerCompose {
     useComposeFiles = ['docker-compose-' + dialect + '.yml']
@@ -112,7 +112,7 @@ publishing {
         pgexposed(MavenPublication) {
             from components.java
             artifact sourcesJar
-            artifactId = 'exposed'
+            artifactId = 'pgexposed'
         }
     }
 }
@@ -133,7 +133,7 @@ bintray {
 
 afterReleaseBuild.dependsOn bintrayUpload
 
-task wrapper(type: Wrapper) {
-    gradleVersion = "4.10.2"
+wrapper {
+    gradleVersion = "5.2.1"
     distributionType = Wrapper.DistributionType.ALL
 }
