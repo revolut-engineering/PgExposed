@@ -109,10 +109,10 @@ bintray {
         licenses = ['Apache-2.0']
         vcsUrl = 'https://github.com/spolnik/PgExposed.git'
         version {
-            name = version
+            name = project.version
             desc = 'PgExposed - async Kotlin Postgres ORM library'
             released  = new Date()
-            vcsTag = version
+            vcsTag = project.version
         }
     }
 }
