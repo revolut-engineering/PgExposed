@@ -1,31 +1,10 @@
-import java.time.Duration
-
-buildscript {
-    repositories {
-        jcenter()
-        maven {
-            url 'https://oss.sonatype.org/content/repositories/snapshots'
-        }
-        maven {
-            url "https://dl.bintray.com/kotlin/kotlin"
-        }
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "com.avast.gradle:gradle-docker-compose-plugin:0.5.2"
-    }
-}
-
 plugins {
+    id 'java-library'
     id "com.jfrog.bintray" version "1.8.0"
     id 'net.researchgate.release' version '2.7.0'
+    id "org.jetbrains.kotlin.jvm" version "1.3.21"
+    id 'maven-publish'
 }
-
-apply plugin: 'java'
-apply plugin: 'kotlin'
-apply plugin: 'maven'
-apply plugin: "maven-publish"
-apply plugin: 'docker-compose'
 
 group = 'org.pgexposed'
 
@@ -42,24 +21,6 @@ task sourcesJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.allSource
 }
 
-task pgexposedDialectTestWithDocker(type: Test) {
-    systemProperties['pgexposed.test.dialects'] = dialect
-}
-
-pgexposedDialectTestWithDocker.doFirst {
-    def containerInfo = dockerCompose.servicesInfos[dialect]
-    systemProperty 'pgexposed.test.' + dialect + '.host', containerInfo.host
-}
-
-dockerCompose.isRequiredBy(pgexposedDialectTestWithDocker)
-
-dockerCompose {
-    useComposeFiles = ['docker-compose-' + dialect + '.yml']
-    captureContainersOutput = true
-    removeVolumes = true
-    waitForHealthyStateTimeout = Duration.ofMinutes(60)
-}
-
 artifacts {
     archives sourcesJar
 }
@@ -68,14 +29,7 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        url 'https://oss.sonatype.org/content/repositories/snapshots'
-    }
-    maven {
         url "https://dl.bintray.com/pgexposed/pgexposed"
-    }
-
-    maven {
-        url "https://packages.atlassian.com/maven-3rdparty-legacy/"
     }
 }
 
@@ -91,15 +45,12 @@ dependencies {
     testCompile 'log4j:log4j:1.2.17'
     testCompile 'junit:junit:4.12'
     testCompile 'org.hamcrest:hamcrest-library:1.3'
-    testCompile 'org.postgresql:postgresql:42.2.2.jre6'
+    testCompile 'org.postgresql:postgresql:42.2.5'
     testCompile 'com.opentable.components:otj-pg-embedded:0.12.0'
 }
 
 test {
     jvmArgs "-XX:MaxPermSize=256m"
-    if (System.properties['pgexposed.test.dialects'] != null) {
-        systemProperties['pgexposed.test.dialects'] = System.properties['pgexposed.test.dialects']
-    }
     testLogging {
         events "PASSED", "FAILED", "SKIPPED"
         showStandardStreams = true
@@ -116,7 +67,6 @@ publishing {
         }
     }
 }
-
 
 bintray {
     user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
