@@ -104,9 +104,9 @@ bintray {
     publish = true
 
     pkg {
-        repo = 'PgExposed'
-        name = 'pgexposed'
         userOrg = 'pgexposed'
+        repo = 'maven'
+        name = 'pgexposed'
         desc = 'PgExposed Kotlin SQL Lib'
         websiteUrl = 'https://github.com/spolnik/PgExposed'
         issueTrackerUrl = 'https://github.com/spolnik/PgExposed/issues'
