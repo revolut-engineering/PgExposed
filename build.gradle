@@ -7,8 +7,6 @@ plugins {
     id "jacoco"
 }
 
-apply from: "$rootDir/gradle/versioning.gradle"
-
 group = 'org.pgexposed'
 
 compileJava.options.encoding = 'UTF-8'

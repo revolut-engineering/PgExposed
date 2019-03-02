@@ -17,7 +17,7 @@ before_deploy:
   - git config --local user.email "jacek.spolnik@gmail.com"
 deploy:
   provider: script
-  script: ./gradlew release
+  script: ./gradlew release -Prelease.useAutomaticVersion=true
   skip_cleanup: true
   on:
     branch: master
