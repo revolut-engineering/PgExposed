@@ -1,5 +1,8 @@
 #!/bin/bash
 
+git remote rm origin
+git remote add origin https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git
+
 git checkout $TRAVIS_BRANCH
 git reset --hard $TRAVIS_COMMIT
 git config --local user.name "Jacek Spolnik"
