@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/spolnik/PgExposed.svg?branch=master)](https://travis-ci.com/spolnik/PgExposed)
 [![codecov](https://codecov.io/gh/spolnik/PgExposed/branch/master/graph/badge.svg)](https://codecov.io/gh/spolnik/PgExposed)
-[![Download](https://api.bintray.com/packages/pgexposed/PgExposed/pgexposed/images/download.svg) ](https://bintray.com/pgexposed/PgExposed/pgexposed/_latestVersion)
+[![Download](https://api.bintray.com/packages/pgexposed/maven/pgexposed/images/download.svg) ](https://bintray.com/pgexposed/maven/pgexposed/_latestVersion)
 [![GitHub License](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
 PgExposed - Kotlin PostgreSQL Library
