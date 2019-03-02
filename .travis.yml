@@ -15,7 +15,6 @@ cache:
 before_deploy:
   - git config --local user.name "Jacek Spólnik"
   - git config --local user.email "jacek.spolnik@gmail.com"
-  - git tag "$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)"
 deploy:
   provider: script
   script: ./gradlew release
