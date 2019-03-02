@@ -122,7 +122,7 @@ open class Transaction(private val transactionImpl: TransactionInterface): UserD
         })
     }
 
-    fun <T> exec(stmt: Statement<T>): T? = exec(stmt, {it})
+    fun <T> exec(stmt: Statement<T>): T? = exec(stmt) {it}
 
     fun <T, R> exec(stmt: Statement<T>, body: Statement<T>.(T) -> R): R? {
         statementCount++

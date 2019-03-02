@@ -7,6 +7,7 @@ import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.vendors.currentDialect
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.time.Duration
 import java.util.*
 
 class ResultRow(internal val fieldIndex: Map<Expression<*>, Int>) {
@@ -102,6 +103,8 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
         private set
     var fetchSize: Int? = null
         private set
+    var queryTimeout: Duration? = null
+        private set
 
     override fun copy(): SizedIterable<ResultRow> = Query(set, where).also { copy ->
         copy.groupedByColumns = groupedByColumns
@@ -112,6 +115,7 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
         copy.limit = limit
         copy.offset = offset
         copy.fetchSize = fetchSize
+        copy.queryTimeout = queryTimeout
     }
 
     /**
@@ -146,6 +150,12 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
         if (fetchSize != null) {
             this.fetchSize = fetchSize
         }
+
+        val queryTimeout = this@Query.queryTimeout
+        if (queryTimeout != null) {
+            this.queryTimeout = queryTimeout.seconds.toInt()
+        }
+
         return executeQuery()
     }
 
@@ -239,18 +249,7 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
         return this
     }
 
-    @Deprecated("use orderBy with SortOrder instead")
-    @JvmName("orderByDeprecated")
-    fun orderBy(column: Expression<*>, isAsc: Boolean) : Query = orderBy(column to isAsc)
-
     fun orderBy(column: Expression<*>, order: SortOrder = SortOrder.ASC) = orderBy(column to order)
-
-    @Deprecated("use orderBy with SortOrder instead")
-    @JvmName("orderByDeprecated2")
-    fun orderBy(vararg columns: Pair<Expression<*>, Boolean>) : Query {
-        (orderByExpressions as MutableList).addAll(columns.map{ it.first to if(it.second) SortOrder.ASC else SortOrder.DESC })
-        return this
-    }
 
     override fun orderBy(vararg columns: Pair<Expression<*>, SortOrder>) : Query {
         (orderByExpressions as MutableList).addAll(columns)
@@ -265,6 +264,11 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
 
     fun fetchSize(n: Int): Query {
         this.fetchSize = n
+        return this
+    }
+
+    fun queryTimeout(timeout: Duration): Query {
+        this.queryTimeout = timeout
         return this
     }
 
