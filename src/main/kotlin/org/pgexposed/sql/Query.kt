@@ -1,10 +1,9 @@
 package org.pgexposed.sql
 
-import org.pgexposed.dao.IdTable
+import org.pgexposed.sql.postgres.currentDialect
 import org.pgexposed.sql.statements.Statement
 import org.pgexposed.sql.statements.StatementType
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.postgres.currentDialect
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.time.Duration
@@ -289,14 +288,7 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
         }
     }
 
-    private fun flushEntities() {
-        // Flush data before executing query or results may be unpredictable
-        val tables = set.source.columns.map { it.table }.filterIsInstance(IdTable::class.java).toSet()
-        transaction.entityCache.flush(tables)
-    }
-
     override operator fun iterator(): Iterator<ResultRow> {
-        flushEntities()
         val resultIterator = ResultIterator(transaction.exec(this)!!)
         return if (transaction.db.supportsMultipleResultSets)
             resultIterator
@@ -311,8 +303,6 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
 
     private var count: Boolean = false
     override fun count(): Int {
-        flushEntities()
-
         return if (distinct || groupedByColumns.isNotEmpty() || limit != null) {
             fun Column<*>.makeAlias() = alias(transaction.quoteIfNecessary("${table.tableName}_$name"))
 
@@ -343,8 +333,6 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
     }
 
     override fun empty(): Boolean {
-        flushEntities()
-
         val oldLimit = limit
         try {
             limit = 1

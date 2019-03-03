@@ -1,6 +1,5 @@
 package org.pgexposed.sql
 
-import org.pgexposed.dao.EntityID
 import org.pgexposed.sql.postgres.currentDialect
 import java.time.LocalDateTime
 
@@ -83,7 +82,6 @@ class QueryParameter<T>(val value: T, val sqlType: IColumnType) : Expression<T>(
     override fun toSQL(queryBuilder: QueryBuilder): String = queryBuilder.registerArgument(sqlType, value)
 }
 
-fun <T:Comparable<T>> idParam(value: EntityID<T>, column: Column<EntityID<T>>): Expression<EntityID<T>> = QueryParameter(value, EntityIDColumnType(column))
 fun booleanParam(value: Boolean): Expression<Boolean> = QueryParameter(value, BooleanColumnType())
 fun intParam(value: Int): Expression<Int> = QueryParameter(value, IntegerColumnType())
 fun longParam(value: Long): Expression<Long> = QueryParameter(value, LongColumnType())

@@ -1,7 +1,5 @@
 package org.pgexposed.sql
 
-import org.pgexposed.dao.EntityID
-import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.postgres.*
 import java.math.BigDecimal
@@ -192,20 +190,6 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
         return this
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun <T:Comparable<T>> Column<T>.entityId(): Column<EntityID<T>> = replaceColumn(this, Column<EntityID<T>>(table, name, EntityIDColumnType(this)).also {
-        it.indexInPK = this.indexInPK
-        it.defaultValueFun = defaultValueFun?.let { { EntityID(it(), table as IdTable<T>) } }
-    })
-
-    fun <ID:Comparable<ID>> entityId(name: String, table: IdTable<ID>) : Column<EntityID<ID>> {
-        val originalColumn = (table.id.columnType as EntityIDColumnType<*>).idColumn
-        val columnTypeCopy = originalColumn.columnType.cloneAsBaseType()
-        val answer = Column<EntityID<ID>>(this, name, EntityIDColumnType(Column<ID>(table, name, columnTypeCopy)))
-        _columns.add(answer)
-        return answer
-    }
-
     private fun IColumnType.cloneAsBaseType() : IColumnType = ((this as? AutoIncColumnType)?.delegate ?: this).clone()
 
     private fun <T:Any> T.clone(replaceArgs: Map<KProperty1<T,*>, Any> = emptyMap()) = javaClass.kotlin.run {
@@ -320,8 +304,6 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
     /**
      * A blob column to store a large amount of binary data.
      *
-     * @sample org.pgexposed.sql.tests.shared.EntityTests.testBlobField
-     *
      * @param name The column name
      */
     fun blob(name: String): Column<Blob> = registerColumn(name, BlobColumnType())
@@ -369,11 +351,6 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
         replaceColumn(this@autoIncrement, this)
     }
 
-
-    fun <N:Comparable<N>> Column<EntityID<N>>.autoinc(idSeqName: String? = null): Column<EntityID<N>> = cloneWithAutoInc(idSeqName).apply {
-        replaceColumn(this@autoinc, this)
-    }
-
     fun <T:Comparable<T>, S: T, C:Column<S>> C.references(ref: Column<T>, onDelete: ReferenceOption? = null, onUpdate: ReferenceOption? = null): C = apply {
         referee = ref
         this.onUpdate = onUpdate
@@ -381,26 +358,6 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
     }
 
     infix fun <T:Comparable<T>, S: T, C:Column<S>> C.references(ref: Column<T>): C = references(ref, null, null)
-
-    fun <T:Comparable<T>> reference(name: String, foreign: IdTable<T>,
-                                    onDelete: ReferenceOption? = null, onUpdate: ReferenceOption? = null): Column<EntityID<T>> =
-            entityId(name, foreign).references(foreign.id, onDelete, onUpdate)
-
-    fun <T:Comparable<T>> reference(name: String, refColumn: Column<T>,
-                                    onDelete: ReferenceOption? = null, onUpdate: ReferenceOption? = null): Column<T> {
-        val originalType = (refColumn.columnType as? EntityIDColumnType<*>)?.idColumn?.columnType ?: refColumn.columnType
-        val column = Column<T>(this, name, originalType.cloneAsBaseType()).references(refColumn, onDelete, onUpdate)
-        this._columns.add(column)
-        return column
-    }
-
-    fun <T:Comparable<T>> optReference(name: String, foreign: IdTable<T>,
-                                       onDelete: ReferenceOption? = null, onUpdate: ReferenceOption? = null): Column<EntityID<T>?> =
-            entityId(name, foreign).references(foreign.id, onDelete, onUpdate).nullable()
-
-    fun <T:Comparable<T?>> optReference(name: String, refColumn: Column<T>,
-                                    onDelete: ReferenceOption? = null, onUpdate: ReferenceOption? = null): Column<T?> =
-         Column<T>(this, name, refColumn.columnType.cloneAsBaseType()).references(refColumn, onDelete, onUpdate).nullable()
 
     fun <T:Any> Column<T>.nullable(): Column<T?> {
         val newColumn = Column<T?> (table, name, columnType)

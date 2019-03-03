@@ -4,17 +4,14 @@ import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.not
 import org.junit.Assert.assertThat
 import org.junit.Test
-import org.pgexposed.dao.*
 import org.pgexposed.exceptions.UnsupportedByDialectException
 import org.pgexposed.sql.*
 import org.pgexposed.sql.Function
 import org.pgexposed.sql.Random
-import org.pgexposed.sql.statements.BatchDataInconsistentException
-import org.pgexposed.sql.statements.BatchInsertStatement
-import org.pgexposed.sql.tests.DatabaseTestsBase
-import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.postgres.DatabaseDialect
 import org.pgexposed.sql.postgres.PostgreSQLDialect
+import org.pgexposed.sql.tests.DatabaseTestsBase
+import org.pgexposed.sql.transactions.TransactionManager
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -24,14 +21,14 @@ import kotlin.test.*
 
 object DMLTestsData {
     object Cities : Table() {
-        val id = integer("cityId").autoIncrement("cities_seq").primaryKey() // PKColumn<Int>
-        val name = varchar("name", 50).uniqueIndex("city_name_idx") // Column<String>
+        val id = integer("cityId").autoIncrement("cities_seq").primaryKey()
+        val name = varchar("name", 50).uniqueIndex("city_name_idx")
     }
 
     object Users : Table() {
-        val id = varchar("id", 10).primaryKey() // PKColumn<String>
-        val name = varchar("name", length = 50) // Column<String>
-        val cityId = (integer("city_id") references Cities.id).nullable() // Column<Int?>
+        val id = varchar("id", 10).primaryKey()
+        val name = varchar("name", length = 50)
+        val cityId = (integer("city_id") references Cities.id).nullable()
     }
 
     object UserData : Table() {
@@ -344,20 +341,22 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testMultipleReferenceJoin01() {
-        val foo = object : IntIdTable("foo") {
+        val foo = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val baz = integer("baz").uniqueIndex()
         }
-        val bar = object : IntIdTable("bar") {
-            val foo = reference("foo", foo)
+        val bar = object : Table("bar") {
+            val id = integer("id").autoIncrement().primaryKey()
+            val foo = (integer("foo") references foo.id)
             val baz = integer("baz") references foo.baz
         }
         withTables(foo, bar) {
-            val fooId = foo.insertAndGetId {
+            val resultSet = foo.insert {
                 it[baz] = 5
             }
 
             bar.insert {
-                it[this.foo] = fooId
+                it[bar.foo] = resultSet.resultedValues!![0][foo.id]
                 it[baz] = 5
             }
 
@@ -368,23 +367,25 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testMultipleReferenceJoin02() {
-        val foo = object : IntIdTable("foo") {
+        val foo = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val baz = integer("baz").uniqueIndex()
         }
-        val bar = object : IntIdTable("bar") {
-            val foo = reference("foo", foo)
-            val foo2 = reference("foo2", foo)
+        val bar = object : Table("bar") {
+            val id = integer("id").autoIncrement().primaryKey()
+            val foo = (integer("foo") references foo.id)
+            val foo2 = (integer("foo2") references foo.id)
             val baz = integer("baz") references foo.baz
         }
         withTables(foo, bar) {
             expectException<IllegalStateException> {
-                val fooId = foo.insertAndGetId {
+                val resultSet = foo.insert {
                     it[baz] = 5
                 }
 
                 bar.insert {
-                    it[this.foo] = fooId
-                    it[this.foo2] = fooId
+                    it[bar.foo] = resultSet.resultedValues!![0][foo.id]
+                    it[bar.foo2] = resultSet.resultedValues!![0][foo.id]
                     it[baz] = 5
                 }
 
@@ -402,7 +403,7 @@ class DMLTests : DatabaseTestsBase() {
                 val cityName = it[cities.name]
                 val userCount = it[users.id.count()]
                 val userCountAlias = it[cAlias]
-                assertTrue(userCountAlias is Int)
+
                 when (cityName) {
                     "Munich" -> assertEquals(2, userCount)
                     "Prague" -> assertEquals(0, userCount)
@@ -410,43 +411,6 @@ class DMLTests : DatabaseTestsBase() {
                     else -> error("Unknow city $cityName")
                 }
             }
-        }
-    }
-
-    @Test
-    fun `test_github_issue_379_count_alias_ClassCastException`() {
-        val Stables = object : UUIDTable("Stables") {
-            val name = varchar("name", 256).uniqueIndex()
-        }
-
-        val Facilities = object : UUIDTable("Facilities") {
-            val stableId = reference("stable_id", Stables)
-            val name = varchar("name", 256)
-        }
-
-        withTables(Facilities, Stables) {
-            val stable1Id = Stables.insertAndGetId {
-                it[Stables.name] = "Stables1"
-            }
-            Stables.insertAndGetId {
-                it[Stables.name] = "Stables2"
-            }
-            Facilities.insertAndGetId {
-                it[Facilities.stableId] = stable1Id
-                it[Facilities.name] = "Facility1"
-            }
-            val fcAlias = Facilities.name.count().alias("fc")
-            val fAlias = Facilities.slice(Facilities.stableId, fcAlias).selectAll().groupBy(Facilities.stableId).alias("f")
-            val sliceColumns = Stables.columns + fAlias[fcAlias]
-            val stats = Stables.join(fAlias, JoinType.LEFT, Stables.id, fAlias[Facilities.stableId])
-                    .slice(sliceColumns)
-                    .selectAll()
-                    .groupBy(*sliceColumns.toTypedArray()).map {
-                        it[Stables.name] to it[fAlias[fcAlias]]
-                    }.toMap()
-            assertEquals(2, stats.size)
-            assertEquals(1, stats["Stables1"])
-            assertNull(stats["Stables2"])
         }
     }
 
@@ -1033,25 +997,26 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertAndGetId01() {
-        val idTable = object : IntIdTable("tmp") {
+        val idTable = object : Table("tmp") {
+            val id = integer("id").autoIncrement().primaryKey()
             val name = varchar("foo", 10).uniqueIndex()
         }
 
         withTables(idTable) {
-            idTable.insertAndGetId {
+            idTable.insert {
                 it[idTable.name] = "1"
             }
 
             assertEquals(1, idTable.selectAll().count())
 
-            idTable.insertAndGetId {
+            idTable.insert {
                 it[idTable.name] = "2"
             }
 
             assertEquals(2, idTable.selectAll().count())
 
             assertFailAndRollback("Unique constraint") {
-                idTable.insertAndGetId {
+                idTable.insert {
                     it[idTable.name] = "2"
                 }
             }
@@ -1060,7 +1025,8 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertIgnoreAndGetId01() {
-        val idTable = object : IntIdTable("tmp") {
+        val idTable = object : Table("tmp") {
+            val id = integer("id").autoIncrement().primaryKey()
             val name = varchar("foo", 10).uniqueIndex()
         }
 
@@ -1077,11 +1043,11 @@ class DMLTests : DatabaseTestsBase() {
 
             assertEquals(2, idTable.selectAll().count())
 
-            val idNull = idTable.insertIgnoreAndGetId {
+            val changes = idTable.insertIgnore {
                 it[idTable.name] = "2"
             }
 
-            assertEquals(null, idNull)
+            assertFalse(changes.resultedValues!![0].hasValue(idTable.id))
         }
     }
 
@@ -1136,36 +1102,6 @@ class DMLTests : DatabaseTestsBase() {
         }
     }
 
-    private val initBatch = listOf<(BatchInsertStatement) -> Unit>({
-        it[EntityTests.TableWithDBDefault.field] = "1"
-    }, {
-        it[EntityTests.TableWithDBDefault.field] = "2"
-        it[EntityTests.TableWithDBDefault.t1] = LocalDateTime.now()
-    })
-
-    @Test
-    fun testRawBatchInsertFails01() {
-        withTables(EntityTests.TableWithDBDefault) {
-            expectException<BatchDataInconsistentException> {
-                BatchInsertStatement(EntityTests.TableWithDBDefault).run {
-                    initBatch.forEach {
-                        addBatch()
-                        it(this)
-                    }
-                }
-            }
-        }
-    }
-
-    @Test
-    fun testRawBatchInsertFails02() {
-        withTables(EntityTests.TableWithDBDefault) {
-            EntityTests.TableWithDBDefault.batchInsert(initBatch) { foo ->
-                foo(this)
-            }
-        }
-    }
-
     @Test
     fun testGeneratedKey01() {
         withTables(DMLTestsData.Cities) {
@@ -1190,54 +1126,6 @@ class DMLTests : DatabaseTestsBase() {
             assertEquals(LongIdTable.selectAll().last()[LongIdTable.id], id)
         }
     }
-
-    object IntIdTestTable : IntIdTable() {
-        val name = text("name")
-    }
-
-    @Test
-    fun testGeneratedKey03() {
-        withTables(IntIdTestTable) {
-            val id = IntIdTestTable.insertAndGetId {
-                it[IntIdTestTable.name] = "Foo"
-            }
-            assertEquals(IntIdTestTable.selectAll().last()[IntIdTestTable.id], id)
-        }
-    }
-
-    /*
-    @Test fun testGeneratedKey04() {
-        val CharIdTable = object : IdTable<String>("charId") {
-            override val id = varchar("id", 50).primaryKey()
-                    .clientDefault { UUID.randomUUID().toString() }
-                    .entityId()
-            val foo = integer("foo")
-        }
-        withTables(CharIdTable){
-            val id = IntIdTestTable.insertAndGetId {
-                it[CharIdTable.foo] = 5
-            }
-            assertNotNull(id?.value)
-        }
-    } */
-
-/*
-    Test fun testInsert05() {
-        val stringThatNeedsEscaping = "multi\r\nline"
-        val t = DMLTestsData.Misc
-        withTables(t) {
-            t.insert {
-                it[n] = 42
-                it[d] = today
-                it[e] = DMLTestsData.E.ONE
-                it[s] = stringThatNeedsEscaping
-            }
-
-            val row = t.selectAll().single()
-            t.checkRow(row, 42, null, today, null, DMLTestsData.E.ONE, null, stringThatNeedsEscaping, null)
-        }
-    }
-*/
 
     @Test
     fun testSelectDistinct() {
@@ -1493,17 +1381,20 @@ class DMLTests : DatabaseTestsBase() {
             override val columnType: IColumnType = IntegerColumnType()
         }
 
-        val foo = object : IntIdTable("foo") {
+        val foo = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val name = text("name")
             val defaultDateTime = datetime("defaultDateTime").defaultExpression(CurrentDateTime())
             val defaultInt = integer("defaultInteger").defaultExpression(abs(-100))
         }
 
         withTables(foo) {
-            val id = foo.insertAndGetId {
+            val resultSet = foo.insert {
                 it[foo.name] = "bar"
             }
-            val result = foo.select { foo.id eq id }.single()
+            val result = foo.select {
+                foo.id eq resultSet.resultedValues!![0][foo.id]
+            }.single()
 
             assertEquals(today.toLocalDate(), result[foo.defaultDateTime].toLocalDate())
             assertEquals(100, result[foo.defaultInt])
@@ -1512,7 +1403,8 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testDefaultExpressions02() {
-        val foo = object : IntIdTable("foo") {
+        val foo = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val name = text("name")
             val defaultDateTime = datetime("defaultDateTime").defaultExpression(CurrentDateTime())
         }
@@ -1520,21 +1412,23 @@ class DMLTests : DatabaseTestsBase() {
         val nonDefaultDate = LocalDate.parse("2000-01-01").atStartOfDay()
 
         withTables(foo) {
-            val id = foo.insertAndGetId {
+            val resultSet = foo.insert {
                 it[foo.name] = "bar"
                 it[foo.defaultDateTime] = nonDefaultDate
             }
 
-            val result = foo.select { foo.id eq id }.single()
+            val result = foo.select {
+                foo.id eq resultSet.resultedValues!![0][foo.id]
+            }.single()
 
             assertEquals("bar", result[foo.name])
             assertEqualDateTime(nonDefaultDate, result[foo.defaultDateTime])
 
-            foo.update({foo.id eq id}) {
+            foo.update({foo.id eq resultSet.resultedValues!![0][foo.id]}) {
                 it[foo.name] = "baz"
             }
 
-            val result2 = foo.select { foo.id eq id }.single()
+            val result2 = foo.select { foo.id eq resultSet.resultedValues!![0][foo.id] }.single()
             assertEquals("baz", result2[foo.name])
             assertEqualDateTime(nonDefaultDate, result2[foo.defaultDateTime])
         }
@@ -1550,7 +1444,6 @@ class DMLTests : DatabaseTestsBase() {
 
             val rand = Random()
             val resultRow = t.slice(rand).selectAll().limit(1).single()
-            assert(resultRow[rand] is BigDecimal)
             println(resultRow[rand])
         }
     }
@@ -1672,11 +1565,11 @@ class DMLTests : DatabaseTestsBase() {
         }
 
         withTables(OrgMemberships, Orgs) {
-            val org1 = Org.new {
-                name = "FOo"
+            val resultSet = Orgs.insert {
+                it[name] = "FOo"
             }
-            val membership = OrgMembership.new {
-                org = org1
+            OrgMemberships.insert {
+                it[orgId] = resultSet.resultedValues!![0][Orgs.id]
             }
 
             assertEquals(1, OrgMemberships.selectAll().count())
@@ -1723,25 +1616,6 @@ class DMLTests : DatabaseTestsBase() {
         }
     }
 
-    @Test fun testInsertWithPredefinedId() {
-        val stringTable = object : IdTable<String>("stringTable") {
-            override val id = varchar("id", 15).entityId()
-            val name = varchar("name", 10)
-        }
-        withTables(stringTable) {
-            val entityID = EntityID("id1", stringTable)
-            val id = stringTable.insertAndGetId {
-                it[id] = entityID
-                it[name] = "foo"
-            }
-
-            assertEquals(id, entityID)
-            val row1 = stringTable.select { stringTable.id eq entityID }.singleOrNull()
-            assertNotNull(row1)
-            assertEquals(row1[stringTable.id], entityID)
-        }
-    }
-
     @Test fun testTRUEandFALSEOps() {
         withCitiesAndUsers { cities, _, _ ->
             val allSities = cities.selectAll().map { it[cities.name] }
@@ -1753,25 +1627,14 @@ class DMLTests : DatabaseTestsBase() {
 
 private val today = LocalDateTime.now().toLocalDate().atStartOfDay()
 
-object OrgMemberships : IntIdTable() {
-    val orgId = reference("org", Orgs.uid)
+object OrgMemberships : Table("org_membership") {
+    val id = integer("id").autoIncrement().primaryKey()
+    val orgId = (integer("orgId") references Orgs.id)
 }
 
-class OrgMembership(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<OrgMembership>(OrgMemberships)
-
-    val orgId by OrgMemberships.orgId
-    var org by Org referencedOn OrgMemberships.orgId
-}
-
-object Orgs : IntIdTable() {
+object Orgs : Table("orgs") {
+    val id = integer("id").autoIncrement().primaryKey()
     val uid = varchar("uid", 36).uniqueIndex().clientDefault { UUID.randomUUID().toString() }
     val name = varchar("name", 256)
 }
 
-class Org(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<Org>(Orgs)
-
-    var uid by Orgs.uid
-    var name by Orgs.name
-}

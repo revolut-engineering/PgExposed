@@ -8,11 +8,7 @@ open class UpdateStatement(val targetsSet: ColumnSet, val where: Op<Boolean>? = 
     open val firstDataSet: List<Pair<Column<*>, Any?>> get() = values.toList()
 
     override fun PreparedStatement.executeInternal(transaction: Transaction): Int {
-        if (values.isEmpty()) return 0
-        transaction.flushCache()
-        return executeUpdate().apply {
-            transaction.entityCache.removeTablesReferrers(targetsSet.targetTables())
-        }
+        return if (values.isEmpty()) 0 else executeUpdate()
     }
 
     override fun prepareSQL(transaction: Transaction): String =

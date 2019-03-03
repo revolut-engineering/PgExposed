@@ -1,8 +1,5 @@
 package org.pgexposed.sql
 
-import org.pgexposed.dao.Entity
-import org.pgexposed.dao.EntityCache
-import org.pgexposed.dao.EntityHook
 import org.pgexposed.sql.statements.Statement
 import org.pgexposed.sql.statements.StatementInterceptor
 import org.pgexposed.sql.statements.StatementType
@@ -44,7 +41,6 @@ open class Transaction(private val transactionImpl: TransactionInterface): UserD
     var duration: Long = 0
     var warnLongQueriesDuration: Long? = null
     var debug = false
-    val entityCache = EntityCache()
 
     // currently executing statement. Used to log error properly
     var currentStatement: PreparedStatement? = null
@@ -59,13 +55,9 @@ open class Transaction(private val transactionImpl: TransactionInterface): UserD
     }
 
     override fun commit() {
-        val created = flushCache()
-        EntityHook.alertSubscribers()
-        val createdByHooks = flushCache()
         interceptors.forEach { it.beforeCommit(this) }
         transactionImpl.commit()
         userdata.clear()
-        EntityCache.invalidateGlobalCaches(created + createdByHooks)
         interceptors.forEach { it.afterCommit() }
     }
 
@@ -73,18 +65,7 @@ open class Transaction(private val transactionImpl: TransactionInterface): UserD
         interceptors.forEach { it.beforeRollback(this) }
         transactionImpl.rollback()
         userdata.clear()
-        entityCache.clearReferrersCache()
-        entityCache.data.clear()
-        entityCache.inserts.clear()
         interceptors.forEach { it.afterRollback() }
-    }
-
-    fun flushCache(): List<Entity<*>> {
-        with(entityCache) {
-            val newEntities = inserts.flatMap { it.value }
-            flush()
-            return newEntities
-        }
     }
 
     private fun describeStatement(delta: Long, stmt: String): String = "[${delta}ms] ${stmt.take(1024)}\n\n"

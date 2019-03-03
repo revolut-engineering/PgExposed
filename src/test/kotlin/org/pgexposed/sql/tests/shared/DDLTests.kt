@@ -1,6 +1,5 @@
 package org.pgexposed.sql.tests.shared
 
-import org.pgexposed.dao.*
 import org.pgexposed.sql.*
 import org.pgexposed.sql.tests.DatabaseTestsBase
 import org.pgexposed.sql.transactions.TransactionManager
@@ -8,12 +7,10 @@ import org.pgexposed.sql.postgres.PostgreSQLDialect
 import org.pgexposed.sql.postgres.currentDialect
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.postgresql.util.PGobject
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.*
 import javax.sql.rowset.serial.SerialBlob
-import kotlin.test.assertNotNull
 
 class DDLTests : DatabaseTestsBase() {
     @Test fun tableExists01() {
@@ -38,7 +35,8 @@ class DDLTests : DatabaseTestsBase() {
         }
     }
 
-    object KeyWordTable : IntIdTable(name ="keywords") {
+    object KeyWordTable : Table(name ="keywords") {
+        val id = integer("id").autoIncrement().primaryKey()
         val bool = bool("bool")
     }
 
@@ -67,8 +65,8 @@ class DDLTests : DatabaseTestsBase() {
     }
 
     @Test fun testCreateMissingTablesAndColumns02() {
-        val TestTable = object : IdTable<String>("Users2") {
-            override val id: Column<EntityID<String>> = varchar("id", 64).clientDefault { UUID.randomUUID().toString() }.primaryKey().entityId()
+        val TestTable = object : Table("Users2") {
+            val id: Column<String> = varchar("id", 64).clientDefault { UUID.randomUUID().toString() }.primaryKey()
 
             val name = varchar("name", 255)
             val email = varchar("email", 255).uniqueIndex()
@@ -86,11 +84,13 @@ class DDLTests : DatabaseTestsBase() {
     }
 
     @Test fun testCreateMissingTablesAndColumnsChangeNullability() {
-        val t1 = object : IntIdTable("foo") {
+        val t1 = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val foo = varchar("foo", 50)
         }
 
-        val t2 = object : IntIdTable("foo") {
+        val t2 = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val foo = varchar("foo", 50).nullable()
         }
 
@@ -118,16 +118,19 @@ class DDLTests : DatabaseTestsBase() {
     }
 
     @Test fun testCreateMissingTablesAndColumnsChangeCascadeType() {
-        val fooTable = object : IntIdTable("foo") {
+        val fooTable = object : Table("foo") {
+            val id = integer("id").autoIncrement().primaryKey()
             val foo = varchar("foo", 50)
         }
 
-        val barTable1 = object : IntIdTable("bar") {
-            val foo = optReference("foo", fooTable, onDelete = ReferenceOption.NO_ACTION)
+        val barTable1 = object : Table("bar") {
+            val id = integer("id").autoIncrement().primaryKey()
+            val foo = (integer("foo").references(fooTable.id, onDelete = ReferenceOption.NO_ACTION)).nullable()
         }
 
-        val barTable2 = object : IntIdTable("bar") {
-            val foo = optReference("foo", fooTable, onDelete = ReferenceOption.CASCADE)
+        val barTable2 = object : Table("bar") {
+            val id = integer("id").autoIncrement().primaryKey()
+            val foo = (integer("foo").references(fooTable.id, onDelete = ReferenceOption.CASCADE)).nullable()
         }
 
         withTables(fooTable, barTable1) {
@@ -200,27 +203,6 @@ class DDLTests : DatabaseTestsBase() {
         }
     }
 
-    @Test fun tableWithMultiPKandAutoIncrement() {
-        val Foo = object : IdTable<Long>("FooTable") {
-            val bar = integer("bar").primaryKey()
-            override val id: Column<EntityID<Long>> = long("id").entityId().autoIncrement().primaryKey()
-        }
-
-        withTables(Foo) {
-            Foo.insert {
-                it[Foo.bar] = 1
-            }
-            Foo.insert {
-                it[Foo.bar] = 2
-            }
-
-            val result = Foo.selectAll().map { it[Foo.id] to it[Foo.bar] }
-            assertEquals(2, result.size)
-            assertEquals(1, result[0].second)
-            assertEquals(2, result[1].second)
-        }
-    }
-
     @Test fun testDefaults01() {
         val currentDT = CurrentDateTime()
         val nowExpression = object : Expression<LocalDateTime>() {
@@ -228,7 +210,8 @@ class DDLTests : DatabaseTestsBase() {
         }
         val dtConstValue = LocalDate.parse("2010-01-01").atStartOfDay()
         val dtLiteral = dateLiteral(dtConstValue)
-        val TestTable = object : IntIdTable("t") {
+        val TestTable = object : Table("t") {
+            val id = integer("id").autoIncrement().primaryKey()
             val s = varchar("s", 100).default("test")
             val sn = varchar("sn", 100).default("testNullable").nullable()
             val l = long("l").default(42)
@@ -264,9 +247,12 @@ class DDLTests : DatabaseTestsBase() {
                     "${"t4".inProperCase()} DATE ${dtLiteral.itOrNull()}" +
                     ")", TestTable.ddl)
 
-            val id1 = TestTable.insertAndGetId {  }
+            val resultRow = TestTable.insert {  }
 
-            val row1 = TestTable.select { TestTable.id eq id1 }.single()
+            val row1 = TestTable.select {
+                TestTable.id eq resultRow.resultedValues!![0][TestTable.id]
+            }.single()
+
             assertEquals("test", row1[TestTable.s])
             assertEquals("testNullable", row1[TestTable.sn])
             assertEquals(42, row1[TestTable.l])
@@ -274,9 +260,11 @@ class DDLTests : DatabaseTestsBase() {
             assertEqualDateTime(dtConstValue, row1[TestTable.t3])
             assertEqualDateTime(dtConstValue, row1[TestTable.t4])
 
-            val id2 = TestTable.insertAndGetId { it[TestTable.sn] = null }
+            val resultSet = TestTable.insert {
+                it[TestTable.sn] = null
+            }
 
-            val row2 = TestTable.select { TestTable.id eq id2 }.single()
+            val row2 = TestTable.select { TestTable.id eq resultSet.resultedValues!![0][TestTable.id] }.single()
         }
     }
 
@@ -419,8 +407,9 @@ class DDLTests : DatabaseTestsBase() {
         val initialTable = object : Table(tableName) {
             val bar = text("bar")
         }
-        val t = IntIdTable(tableName)
-
+        val t = object: Table(tableName) {
+            val id = integer("id").autoIncrement().primaryKey()
+        }
 
         withDb {
             SchemaUtils.createMissingTablesAndColumns(initialTable)
@@ -439,24 +428,22 @@ class DDLTests : DatabaseTestsBase() {
         }
     }
 
-
-    private abstract class EntityTable(name: String = "") : IdTable<String>(name) {
-        override val id: Column<EntityID<String>> = varchar("id", 64).clientDefault { UUID.randomUUID().toString() }.primaryKey().entityId()
-    }
-
     @Test fun complexTest01() {
-        val User = object : EntityTable("User") {
+        val User = object : Table("User") {
+            val id = integer("id").autoIncrement().primaryKey()
             val name = varchar("name", 255)
             val email = varchar("email", 255)
         }
 
-        val Repository = object : EntityTable("Repository") {
+        val Repository = object : Table("Repository") {
+            val id = integer("id").autoIncrement().primaryKey()
             val name = varchar("name", 255)
         }
 
-        val UserToRepo = object : EntityTable("UserToRepo") {
-            val user = reference("user", User)
-            val repo = reference("repo", Repository)
+        val UserToRepo = object : Table("UserToRepo") {
+            val id = integer("id").autoIncrement().primaryKey()
+            val user = (integer("user") references User.id)
+            val repo = (integer("repo") references Repository.id)
         }
 
         withTables(User, Repository, UserToRepo) {
@@ -487,23 +474,25 @@ class DDLTests : DatabaseTestsBase() {
         }
     }
 
-    object Table1 : IntIdTable() {
-        val table2 = reference("teamId", Table2, onDelete = ReferenceOption.NO_ACTION)
+    object Table1 : Table() {
+        val id = integer("id").autoIncrement().primaryKey()
+        val table2 = integer("table2").references(Table2.id, onDelete = ReferenceOption.NO_ACTION)
     }
 
-    object Table2 : IntIdTable() {
-        val table1 = optReference("teamId", Table1, onDelete = ReferenceOption.NO_ACTION)
+    object Table2 : Table() {
+        val id = integer("id").autoIncrement().primaryKey()
+        val table1 = integer("table1").references(Table1.id, onDelete = ReferenceOption.NO_ACTION).nullable()
     }
 
     @Test fun testCrossReference() {
         withTables(Table1, Table2) {
-            val table2id = Table2.insertAndGetId{}
-            val table1id = Table1.insertAndGetId {
-                it[Table1.table2] = table2id
+            val resultSet = Table2.insert{}
+            val resultSet2 = Table1.insert {
+                it[Table1.table2] = resultSet.resultedValues!![0][Table2.id]
             }
 
-            Table2.insertAndGetId {
-                it[Table2.table1] = table1id
+            Table2.insert {
+                it[Table2.table1] = resultSet2.resultedValues!![0][Table1.id]
             }
 
             assertEquals(1, Table1.selectAll().count())
@@ -517,22 +506,6 @@ class DDLTests : DatabaseTestsBase() {
             Table2.deleteAll()
 
             exec(ForeignKeyConstraint.from(Table2.table1).dropStatement().single())
-        }
-    }
-
-    @Test fun testUUIDColumnType() {
-        val Node = object: IntIdTable("node") {
-            val uuid = uuid("uuid")
-        }
-
-        withTables(Node){
-            val key: UUID = UUID.randomUUID()
-            val id = Node.insertAndGetId { it[uuid] = key }
-            assertNotNull(id)
-            val uidById = Node.select { Node.id eq id }.singleOrNull()?.get(Node.uuid)
-            assertEquals(key, uidById)
-            val uidByKey = Node.select { Node.uuid eq key }.singleOrNull()?.get(Node.uuid)
-            assertEquals(key, uidByKey)
         }
     }
 
@@ -619,79 +592,6 @@ class DDLTests : DatabaseTestsBase() {
                     it[negative] = 91
                 }
             }
-        }
-    }
-
-    internal enum class Foo { Bar, Baz }
-
-    class PGEnum<T:Enum<T>>(enumTypeName: String, enumValue: T?) : PGobject() {
-        init {
-            value = enumValue?.name
-            type = enumTypeName
-        }
-    }
-
-    object EnumTable : IntIdTable("EnumTable") {
-        internal var enumColumn: Column<Foo> = enumeration("enumColumn", Foo::class)
-
-        internal fun initEnumColumn(sql: String) {
-            (columns as MutableList<Column<*>>).remove(enumColumn)
-            enumColumn = customEnumeration("enumColumn", sql, { value ->
-                Foo.valueOf(value as String)
-            }, { value -> PGEnum("FooEnum", value) })
-        }
-    }
-
-    @Test fun testCustomEnumeration01() {
-
-        withDb {
-            val sqlType = "FooEnum"
-
-            class EnumEntity(id: EntityID<Int>) : IntEntity(id) {
-                var enum by EnumTable.enumColumn
-            }
-
-            val EnumClass = object : IntEntityClass<EnumEntity>(EnumTable, EnumEntity::class.java) {}
-
-            try {
-                if (currentDialect is PostgreSQLDialect) {
-                    exec("CREATE TYPE FooEnum AS ENUM ('Bar', 'Baz');")
-                }
-                EnumTable.initEnumColumn(sqlType)
-                SchemaUtils.create(EnumTable)
-                EnumTable.insert {
-                    it[enumColumn] = Foo.Bar
-                }
-                assertEquals(Foo.Bar, EnumTable.selectAll().single()[EnumTable.enumColumn])
-
-                val entity = EnumClass.new {
-                    enum = Foo.Baz
-                }
-                assertEquals(Foo.Baz, entity.enum)
-                entity.id.value // flush entity
-                assertEquals(Foo.Baz, entity.enum)
-                assertEquals(Foo.Baz, EnumClass.reload(entity)!!.enum)
-            } finally {
-                try {
-                    SchemaUtils.drop(EnumTable)
-                } catch (ignore: Exception) {}
-            }
-        }
-    }
-
-    // https://github.com/JetBrains/Exposed/issues/112
-    @Test fun testDropTableFlushesCache() {
-        withDb {
-            class Keyword(id: EntityID<Int>) : IntEntity(id) {
-                var bool by KeyWordTable.bool
-            }
-            val KeywordEntityClass = object : IntEntityClass<Keyword>(KeyWordTable, Keyword::class.java) {}
-
-            SchemaUtils.create(KeyWordTable)
-
-            val newKeyword = KeywordEntityClass.new { bool = true }
-
-            SchemaUtils.drop(KeyWordTable)
         }
     }
 }

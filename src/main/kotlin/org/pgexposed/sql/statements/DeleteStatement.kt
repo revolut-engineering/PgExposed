@@ -5,11 +5,7 @@ import java.sql.PreparedStatement
 
 open class DeleteStatement(val table: Table, val where: Op<Boolean>? = null): Statement<Int>(StatementType.DELETE, listOf(table)) {
 
-    override fun PreparedStatement.executeInternal(transaction: Transaction): Int {
-        transaction.flushCache()
-        transaction.entityCache.removeTablesReferrers(listOf(table))
-        return executeUpdate()
-    }
+    override fun PreparedStatement.executeInternal(transaction: Transaction): Int = executeUpdate()
 
     override fun prepareSQL(transaction: Transaction): String =
         transaction.db.dialect.functionProvider.delete(table, where?.toSQL(QueryBuilder(true)), transaction)

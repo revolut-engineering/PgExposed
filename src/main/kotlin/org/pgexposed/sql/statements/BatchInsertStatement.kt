@@ -11,8 +11,6 @@ internal class BatchDataInconsistentException(message : String) : Exception(mess
 
 open class BatchInsertStatement(table: Table, ignore: Boolean = false): InsertStatement<List<ResultRow>>(table, ignore) {
 
-    override val flushCache: Boolean = false
-
     override val isAlwaysBatch = true
 
     override val generatedKey: List<ResultRow>?

@@ -1,17 +1,13 @@
 @file:Suppress("PackageDirectoryMismatch")
 package org.pgexposed.exceptions
 
-import org.pgexposed.dao.EntityClass
-import org.pgexposed.dao.EntityID
 import org.pgexposed.sql.Query
 import org.pgexposed.sql.QueryBuilder
 import org.pgexposed.sql.Transaction
+import org.pgexposed.sql.postgres.DatabaseDialect
 import org.pgexposed.sql.statements.StatementContext
 import org.pgexposed.sql.statements.expandArgs
-import org.pgexposed.sql.postgres.DatabaseDialect
 import java.sql.SQLException
-
-class EntityNotFoundException(val id: EntityID<*>, val entity: EntityClass<*, *>): Exception("Entity ${entity.klass.simpleName}, id=$id not found in database")
 
 class ExposedSQLException(cause: Throwable?, val contexts: List<StatementContext>, private val transaction: Transaction) : SQLException(cause) {
     fun causedByQueries() : List<String> = contexts.map {

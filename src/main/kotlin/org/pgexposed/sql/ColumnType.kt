@@ -1,7 +1,5 @@
 package org.pgexposed.sql
 
-import org.pgexposed.dao.EntityID
-import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.statements.DefaultValueMarker
 import org.pgexposed.sql.postgres.currentDialect
 import java.io.InputStream
@@ -65,7 +63,6 @@ class AutoIncColumnType(val delegate: ColumnType, private val _autoincSeq: Strin
     val autoincSeq : String? get() = if (currentDialect.needsSequenceToAutoInc) _autoincSeq else null
 
     private fun resolveAutIncType(columnType: IColumnType) : String = when (columnType) {
-        is EntityIDColumnType<*> -> resolveAutIncType(columnType.idColumn.columnType)
         is IntegerColumnType -> currentDialect.dataTypeProvider.shortAutoincType()
         is LongColumnType -> currentDialect.dataTypeProvider.longAutoincType()
         else -> error("Unsupported type $delegate for auto-increment")
@@ -74,37 +71,9 @@ class AutoIncColumnType(val delegate: ColumnType, private val _autoincSeq: Strin
     override fun sqlType(): String = resolveAutIncType(delegate)
 }
 
-val IColumnType.isAutoInc: Boolean get() = this is AutoIncColumnType || (this is EntityIDColumnType<*> && idColumn.columnType.isAutoInc)
-val Column<*>.autoIncSeqName : String? get() {
-        return (columnType as? AutoIncColumnType)?.autoincSeq
-            ?: (columnType as? EntityIDColumnType<*>)?.idColumn?.autoIncSeqName
-}
-
-class EntityIDColumnType<T:Comparable<T>>(val idColumn: Column<T>) : ColumnType(false) {
-
-    init {
-        assert(idColumn.table is IdTable<*>){"EntityId supported only for IdTables"}
-    }
-
-    override fun sqlType(): String = idColumn.columnType.sqlType()
-
-    override fun notNullValueToDB(value: Any): Any =
-        idColumn.columnType.notNullValueToDB(when (value) {
-            is EntityID<*> -> value.value
-            else -> value
-        })
-
-    override fun nonNullValueToString(value: Any): String =  when (value) {
-        is EntityID<*> -> idColumn.columnType.nonNullValueToString(value.value)
-        else -> idColumn.columnType.nonNullValueToString(value)
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    override fun valueFromDB(value: Any): Any = when (value) {
-        is EntityID<*> -> EntityID(value.value as T, idColumn.table as IdTable<T>)
-        else -> EntityID(idColumn.columnType.valueFromDB(value) as T, idColumn.table as IdTable<T>)
-    }
-}
+val IColumnType.isAutoInc: Boolean get() = this is AutoIncColumnType
+val Column<*>.autoIncSeqName : String?
+    get() = (columnType as? AutoIncColumnType)?.autoincSeq
 
 class CharacterColumnType : ColumnType() {
     override fun sqlType(): String  = "CHAR"

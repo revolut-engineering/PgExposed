@@ -1,9 +1,9 @@
 package org.pgexposed.sql.tests.shared
 
-import org.pgexposed.dao.IntIdTable
 import org.pgexposed.sql.SchemaUtils
 import org.pgexposed.sql.Table
 import org.junit.Test
+import org.pgexposed.sql.tests.shared.SortByReferenceTest.TestTables.refereeTable.primaryKey
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -44,10 +44,11 @@ class SortByReferenceTest {
 
         object refereeTable : Table() {
             val id = varchar("id", 10).primaryKey()
-            val ref = reference("ref", noRefereeTable.id)
+            val ref = (varchar("ref", 10) references noRefereeTable.id)
         }
 
-        object referencedTable : IntIdTable() {
+        object referencedTable : Table() {
+            val id = varchar("id", 10).primaryKey()
             val col3 = varchar("col3", 10)
         }
 

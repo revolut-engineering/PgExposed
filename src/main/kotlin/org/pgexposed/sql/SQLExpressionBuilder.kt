@@ -1,8 +1,6 @@
 @file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
 package org.pgexposed.sql
 
-import org.pgexposed.dao.EntityID
-import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.postgres.currentDialect
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -62,13 +60,6 @@ object SqlExpressionBuilder {
     fun<T, S:T?> ExpressionWithColumnType<in S>.wrap(value: T): Expression<T> = QueryParameter(value, columnType)
 
     infix fun <T> ExpressionWithColumnType<T>.eq(t: T) : Op<Boolean> {
-        if (t == null) {
-            return isNull()
-        }
-        return EqOp(this, wrap(t))
-    }
-
-    infix fun <T:Comparable<T>> Column<EntityID<T>>.eq(t: T?) : Op<Boolean> {
         if (t == null) {
             return isNull()
         }
@@ -140,13 +131,6 @@ object SqlExpressionBuilder {
     infix fun<T:String?> ExpressionWithColumnType<T>.notRegexp(pattern: String): Op<Boolean> = NotRegexpOp(this, QueryParameter(pattern, columnType))
 
     infix fun<T> ExpressionWithColumnType<T>.inList(list: Iterable<T>): Op<Boolean> = InListOrNotInListOp(this, list, isInList = true)
-
-    @Suppress("UNCHECKED_CAST")
-    @JvmName("inListIds")
-    infix fun<T:Comparable<T>> Column<EntityID<T>>.inList(list: Iterable<T>): Op<Boolean> {
-        val idTable = (columnType as EntityIDColumnType<T>).idColumn.table as IdTable<T>
-        return inList(list.map { EntityID(it, idTable) })
-    }
 
     infix fun<T> ExpressionWithColumnType<T>.notInList(list: Iterable<T>): Op<Boolean> = InListOrNotInListOp(this, list, isInList = false)
 

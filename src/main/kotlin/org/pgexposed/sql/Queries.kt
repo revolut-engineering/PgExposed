@@ -1,7 +1,5 @@
 package org.pgexposed.sql
 
-import org.pgexposed.dao.EntityID
-import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.statements.*
 import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.postgres.currentDialect
@@ -23,11 +21,8 @@ fun FieldSet.selectAll() : Query = Query(this, null)
 /**
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testDelete01
  */
-fun Table.deleteWhere(limit: Int? = null, offset: Int? = null, op: SqlExpressionBuilder.()->Op<Boolean>) =
+fun Table.deleteWhere(op: SqlExpressionBuilder.() -> Op<Boolean>) =
     DeleteStatement.where(TransactionManager.current(), this@deleteWhere, SqlExpressionBuilder.op())
-
-fun Table.deleteIgnoreWhere(limit: Int? = null, offset: Int? = null, op: SqlExpressionBuilder.()->Op<Boolean>) =
-    DeleteStatement.where(TransactionManager.current(), this@deleteIgnoreWhere, SqlExpressionBuilder.op())
 
 /**
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testDelete01
@@ -42,16 +37,6 @@ fun <T:Table> T.insert(body: T.(InsertStatement<Number>)->Unit): InsertStatement
     body(this)
     execute(TransactionManager.current())
 }
-
-/**
- * @sample org.pgexposed.sql.tests.shared.DMLTests.testGeneratedKey03
- */
-fun <Key:Comparable<Key>, T: IdTable<Key>> T.insertAndGetId(body: T.(InsertStatement<EntityID<Key>>)->Unit) =
-    InsertStatement<EntityID<Key>>(this, false).run {
-        body(this)
-        execute(TransactionManager.current())
-        get(id)!!
-    }
 
 /**
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testBatchInsert01
@@ -93,15 +78,6 @@ fun <T:Table> T.insertIgnore(body: T.(UpdateBuilder<*>)->Unit): InsertStatement<
     execute(TransactionManager.current())
 }
 
-fun <Key:Comparable<Key>, T: IdTable<Key>> T.insertIgnoreAndGetId(body: T.(UpdateBuilder<*>)->Unit) = InsertStatement<EntityID<Key>>(this, isIgnore = true).run {
-    body(this)
-    execute(TransactionManager.current())
-    get(id)
-}
-
-/**
- * @sample org.pgexposed.sql.tests.shared.DMLTests.testReplace01
- */
 fun <T:Table> T.replace(body: T.(UpdateBuilder<*>)->Unit): ReplaceStatement<Long> = ReplaceStatement<Long>(this).apply {
     body(this)
     execute(TransactionManager.current())
@@ -121,13 +97,13 @@ fun <T:Table> T.insertIgnore(selectQuery: Query, columns: List<Column<*>> = this
 /**
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testUpdate01
  */
-fun <T:Table> T.update(where: (SqlExpressionBuilder.()->Op<Boolean>)? = null, limit: Int? = null, body: T.(UpdateStatement)->Unit): Int {
+fun <T:Table> T.update(where: (SqlExpressionBuilder.() -> Op<Boolean>)? = null, body: T.(UpdateStatement) -> Unit): Int {
     val query = UpdateStatement(this, where?.let { SqlExpressionBuilder.it() })
     body(query)
     return query.execute(TransactionManager.current())!!
 }
 
-fun Join.update(where: (SqlExpressionBuilder.()->Op<Boolean>)? = null, limit: Int? = null, body: (UpdateStatement)->Unit) : Int {
+fun Join.update(where: (SqlExpressionBuilder.() -> Op<Boolean>)? = null, body: (UpdateStatement) -> Unit) : Int {
     val query = UpdateStatement(this, where?.let { SqlExpressionBuilder.it() })
     body(query)
     return query.execute(TransactionManager.current())!!
