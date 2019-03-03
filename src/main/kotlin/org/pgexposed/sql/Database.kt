@@ -6,7 +6,6 @@ import org.pgexposed.sql.transactions.ThreadLocalTransactionManager
 import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.vendors.ANSI_SQL_2003_KEYWORDS
 import org.pgexposed.sql.vendors.PostgreSQLDialect
-import org.pgexposed.sql.vendors.VENDORS_KEYWORDS
 import org.pgexposed.sql.vendors.currentDialect
 import java.math.BigDecimal
 import java.sql.Connection
@@ -36,7 +35,7 @@ class Database private constructor(val connector: () -> Connection) {
 
     fun isVersionCovers(version: BigDecimal) = this.version >= version
 
-    val keywords by lazy(LazyThreadSafetyMode.NONE) { ANSI_SQL_2003_KEYWORDS + VENDORS_KEYWORDS[currentDialect.name].orEmpty() + metadata.sqlKeywords.split(',') }
+    val keywords by lazy(LazyThreadSafetyMode.NONE) { ANSI_SQL_2003_KEYWORDS + metadata.sqlKeywords.split(',') }
     val identityQuoteString by lazy(LazyThreadSafetyMode.NONE) { metadata.identifierQuoteString!!.trim() }
     val extraNameCharacters by lazy(LazyThreadSafetyMode.NONE) { metadata.extraNameCharacters!!}
     val supportsAlterTableWithAddColumn by lazy(LazyThreadSafetyMode.NONE) { metadata.supportsAlterTableWithAddColumn()}

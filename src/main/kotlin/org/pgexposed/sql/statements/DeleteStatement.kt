@@ -3,7 +3,7 @@ package org.pgexposed.sql.statements
 import org.pgexposed.sql.*
 import java.sql.PreparedStatement
 
-open class DeleteStatement(val table: Table, val where: Op<Boolean>? = null, val isIgnore: Boolean = false, val limit: Int? = null, val offset: Int? = null): Statement<Int>(StatementType.DELETE, listOf(table)) {
+open class DeleteStatement(val table: Table, val where: Op<Boolean>? = null): Statement<Int>(StatementType.DELETE, listOf(table)) {
 
     override fun PreparedStatement.executeInternal(transaction: Transaction): Int {
         transaction.flushCache()
@@ -12,7 +12,7 @@ open class DeleteStatement(val table: Table, val where: Op<Boolean>? = null, val
     }
 
     override fun prepareSQL(transaction: Transaction): String =
-        transaction.db.dialect.functionProvider.delete(isIgnore, table, where?.toSQL(QueryBuilder(true)), limit, transaction)
+        transaction.db.dialect.functionProvider.delete(table, where?.toSQL(QueryBuilder(true)), transaction)
 
     override fun arguments(): Iterable<Iterable<Pair<IColumnType, Any?>>> = QueryBuilder(true).run {
         where?.toSQL(this)
@@ -20,8 +20,8 @@ open class DeleteStatement(val table: Table, val where: Op<Boolean>? = null, val
     }
 
     companion object {
-        fun where(transaction: Transaction, table: Table, op: Op<Boolean>, isIgnore: Boolean = false, limit: Int? = null, offset: Int? = null): Int
-            = DeleteStatement(table, op, isIgnore, limit, offset).execute(transaction) ?: 0
+        fun where(transaction: Transaction, table: Table, op: Op<Boolean>): Int
+            = DeleteStatement(table, op).execute(transaction) ?: 0
 
         fun all(transaction: Transaction, table: Table): Int = DeleteStatement(table).execute(transaction) ?: 0
     }

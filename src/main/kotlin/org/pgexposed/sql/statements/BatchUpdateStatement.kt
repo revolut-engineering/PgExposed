@@ -11,7 +11,7 @@ import org.pgexposed.sql.Transaction
 import java.sql.PreparedStatement
 import java.util.*
 
-open class BatchUpdateStatement(val table: IdTable<*>): UpdateStatement(table, null) {
+open class BatchUpdateStatement(val table: IdTable<*>): UpdateStatement(table) {
     val data = ArrayList<Pair<EntityID<*>, Map<Column<*>, Any?>>>()
 
     override val firstDataSet: List<Pair<Column<*>, Any?>> get() = data.first().second.toList()

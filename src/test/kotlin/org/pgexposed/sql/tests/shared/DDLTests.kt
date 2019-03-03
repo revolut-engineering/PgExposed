@@ -5,14 +5,12 @@ import org.pgexposed.sql.*
 import org.pgexposed.sql.tests.DatabaseTestsBase
 import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.vendors.PostgreSQLDialect
-import org.pgexposed.sql.vendors.VendorDialect
 import org.pgexposed.sql.vendors.currentDialect
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.postgresql.util.PGobject
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.*
 import javax.sql.rowset.serial.SerialBlob
 import kotlin.test.assertNotNull
@@ -699,7 +697,7 @@ class DDLTests : DatabaseTestsBase() {
 }
 
 private fun String.inProperCase(): String = TransactionManager.currentOrNull()?.let { tm ->
-    (currentDialect as? VendorDialect)?.run {
+    (currentDialect as? PostgreSQLDialect)?.run {
         this@inProperCase.inProperCase
     }
 } ?: this

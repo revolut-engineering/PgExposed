@@ -208,7 +208,7 @@ open class Query(set: FieldSet, where: Op<Boolean>?): SizedIterable<ResultRow>, 
 
             limit?.let {
                 append(" ")
-                append(currentDialect.functionProvider.queryLimit(it, offset, orderByExpressions.isNotEmpty()))
+                append(currentDialect.functionProvider.queryLimit(it, offset))
             }
         }
 

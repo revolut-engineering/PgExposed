@@ -24,10 +24,10 @@ fun FieldSet.selectAll() : Query = Query(this, null)
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testDelete01
  */
 fun Table.deleteWhere(limit: Int? = null, offset: Int? = null, op: SqlExpressionBuilder.()->Op<Boolean>) =
-    DeleteStatement.where(TransactionManager.current(), this@deleteWhere, SqlExpressionBuilder.op(), false, limit, offset)
+    DeleteStatement.where(TransactionManager.current(), this@deleteWhere, SqlExpressionBuilder.op())
 
 fun Table.deleteIgnoreWhere(limit: Int? = null, offset: Int? = null, op: SqlExpressionBuilder.()->Op<Boolean>) =
-    DeleteStatement.where(TransactionManager.current(), this@deleteIgnoreWhere, SqlExpressionBuilder.op(), true, limit, offset)
+    DeleteStatement.where(TransactionManager.current(), this@deleteIgnoreWhere, SqlExpressionBuilder.op())
 
 /**
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testDelete01
@@ -122,13 +122,13 @@ fun <T:Table> T.insertIgnore(selectQuery: Query, columns: List<Column<*>> = this
  * @sample org.pgexposed.sql.tests.shared.DMLTests.testUpdate01
  */
 fun <T:Table> T.update(where: (SqlExpressionBuilder.()->Op<Boolean>)? = null, limit: Int? = null, body: T.(UpdateStatement)->Unit): Int {
-    val query = UpdateStatement(this, limit, where?.let { SqlExpressionBuilder.it() })
+    val query = UpdateStatement(this, where?.let { SqlExpressionBuilder.it() })
     body(query)
     return query.execute(TransactionManager.current())!!
 }
 
 fun Join.update(where: (SqlExpressionBuilder.()->Op<Boolean>)? = null, limit: Int? = null, body: (UpdateStatement)->Unit) : Int {
-    val query = UpdateStatement(this, limit, where?.let { SqlExpressionBuilder.it() })
+    val query = UpdateStatement(this, where?.let { SqlExpressionBuilder.it() })
     body(query)
     return query.execute(TransactionManager.current())!!
 }

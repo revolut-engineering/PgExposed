@@ -1,9 +1,5 @@
 package org.pgexposed.sql.vendors
 
-val VENDORS_KEYWORDS = mapOf(
-        PostgreSQLDialect.dialectName to listOf("")
-)
-
 val ANSI_SQL_2003_KEYWORDS = setOf(
         "ADD",
         "ALL",

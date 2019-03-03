@@ -3,75 +3,75 @@ package org.pgexposed.sql.vendors
 import org.pgexposed.exceptions.throwUnsupportedException
 import org.pgexposed.sql.*
 import org.pgexposed.sql.transactions.TransactionManager
-import java.nio.ByteBuffer
 import java.sql.ResultSet
 import java.util.*
 
-open class DataTypeProvider {
-    open fun shortAutoincType() = "INT AUTO_INCREMENT"
+object PostgresDataTypeProvider {
+    fun shortAutoincType(): String = "SERIAL"
 
-    open fun shortType() = "INT"
+    fun shortType() = "INT"
 
-    open fun longAutoincType() = "BIGINT AUTO_INCREMENT"
+    fun longAutoincType(): String = "BIGSERIAL"
 
-    open fun longType() = "BIGINT"
+    fun longType() = "BIGINT"
 
-    open fun floatType() = "FLOAT"
+    fun floatType() = "FLOAT"
 
-    open fun doubleType() = "DOUBLE PRECISION"
+    fun doubleType() = "DOUBLE PRECISION"
 
-    open fun uuidType() = "BINARY(16)"
+    fun uuidType(): String = "uuid"
 
-    open fun dateTimeType() = "DATETIME"
+    fun dateTimeType(): String = "TIMESTAMP"
 
-    open fun blobType(): String = "BLOB"
+    fun blobType(): String = "bytea"
 
-    open fun binaryType(length: Int): String = "VARBINARY($length)"
+    fun binaryType(length: Int): String = "bytea"
 
-    open fun booleanType(): String = "BOOLEAN"
+    fun booleanType(): String = "BOOLEAN"
 
-    open fun booleanToStatementString(bool: Boolean) = bool.toString()
+    fun booleanToStatementString(bool: Boolean) = bool.toString()
 
-    open fun uuidToDB(value: UUID) : Any =
-            ByteBuffer.allocate(16).putLong(value.mostSignificantBits).putLong(value.leastSignificantBits).array()
+    fun uuidToDB(value: UUID): Any = value
 
-    open fun booleanFromStringToBoolean(value: String): Boolean = value.toBoolean()
+    fun booleanFromStringToBoolean(value: String): Boolean = value.toBoolean()
 
-    open fun textType() = "TEXT"
-    open val blobAsStream = false
+    fun textType() = "TEXT"
 
-    open fun processForDefaultValue(e: Expression<*>) : String = when (e) {
+    val blobAsStream = true
+
+    fun processForDefaultValue(e: Expression<*>) : String = when (e) {
         is LiteralOp<*> -> e.toSQL(QueryBuilder(false))
         else -> "(${e.toSQL(QueryBuilder(false))})"
     }
 }
 
-abstract class FunctionProvider {
+object PostgresFunctionProvider {
 
-    open val DEFAULT_VALUE_EXPRESSION = "DEFAULT VALUES"
+    const val DEFAULT_VALUE_EXPRESSION = "DEFAULT VALUES"
 
-    open fun<T:String?> substring(expr: Expression<T>, start: Expression<Int>, length: Expression<Int>, builder: QueryBuilder) : String =
+    fun<T:String?> substring(expr: Expression<T>, start: Expression<Int>, length: Expression<Int>, builder: QueryBuilder) : String =
             "SUBSTRING(${expr.toSQL(builder)}, ${start.toSQL(builder)}, ${length.toSQL(builder)})"
 
-    open fun random(seed: Int?): String = "RANDOM(${seed?.toString().orEmpty()})"
+    fun random(seed: Int?): String = "RANDOM(${seed?.toString().orEmpty()})"
 
-    open fun cast(expr: Expression<*>, type: IColumnType, builder: QueryBuilder) = "CAST(${expr.toSQL(builder)} AS ${type.sqlType()})"
+    fun cast(expr: Expression<*>, type: IColumnType, builder: QueryBuilder) = "CAST(${expr.toSQL(builder)} AS ${type.sqlType()})"
 
-    open fun<T:String?> ExpressionWithColumnType<T>.match(pattern: String, mode: MatchMode? = null): Op<Boolean> = with(SqlExpressionBuilder) { this@match.like(pattern) }
+    fun<T:String?> ExpressionWithColumnType<T>.match(pattern: String, mode: MatchMode? = null): Op<Boolean> = with(SqlExpressionBuilder) { this@match.like(pattern) }
 
-    open fun insert(ignore: Boolean, table: Table, columns: List<Column<*>>, expr: String, transaction: Transaction): String {
-        if (ignore) {
-            transaction.throwUnsupportedException("There's no generic SQL for INSERT IGNORE. There must be vendor specific implementation")
-        }
+    private const val onConflictIgnore = "ON CONFLICT DO NOTHING"
+
+    fun insert(ignore: Boolean, table: Table, columns: List<Column<*>>, expr: String, transaction: Transaction): String {
 
         val (columnsExpr, valuesExpr) = if (columns.isNotEmpty()) {
             columns.joinToString(prefix = "(", postfix = ")") { transaction.identity(it) } to expr
         } else "" to DEFAULT_VALUE_EXPRESSION
 
-        return "INSERT INTO ${transaction.identity(table)} $columnsExpr $valuesExpr"
+        val def =  "INSERT INTO ${transaction.identity(table)} $columnsExpr $valuesExpr"
+
+        return if (ignore) "$def $onConflictIgnore" else def
     }
 
-    open fun update(targets: ColumnSet, columnsAndValues: List<Pair<Column<*>, Any?>>, limit: Int?, where: Op<Boolean>?, transaction: Transaction): String {
+    fun update(targets: ColumnSet, columnsAndValues: List<Pair<Column<*>, Any?>>, where: Op<Boolean>?, transaction: Transaction): String {
         return buildString {
             val builder = QueryBuilder(true)
             append("UPDATE ${targets.describe(transaction, builder)}")
@@ -81,15 +81,10 @@ abstract class FunctionProvider {
             })
 
             where?.let { append(" WHERE " + it.toSQL(builder)) }
-            limit?.let { append(" LIMIT $it")}
         }
     }
 
-    open fun delete(ignore: Boolean, table: Table, where: String?, limit: Int?, transaction: Transaction): String {
-        if (ignore) {
-            transaction.throwUnsupportedException("There's no generic SQL for DELETE IGNORE. There must be vendor specific implementation")
-        }
-
+    fun delete(table: Table, where: String?, transaction: Transaction): String {
         return buildString {
             append("DELETE FROM ")
             append(transaction.identity(table))
@@ -97,32 +92,37 @@ abstract class FunctionProvider {
                 append(" WHERE ")
                 append(where)
             }
-            if (limit != null) {
-                append(" LIMIT ")
-                append(limit)
-            }
         }
     }
 
-    open fun replace(table: Table, data: List<Pair<Column<*>, Any?>>, transaction: Transaction): String
-        = transaction.throwUnsupportedException("There's no generic SQL for replace. There must be vendor specific implementation")
+    fun queryLimit(size: Int, offset: Int) = "LIMIT $size" + if (offset > 0) " OFFSET $offset" else ""
 
-    open fun queryLimit(size: Int, offset: Int, alreadyOrdered: Boolean) = "LIMIT $size" + if (offset > 0) " OFFSET $offset" else ""
+    fun replace(table: Table, data: List<Pair<Column<*>, Any?>>, transaction: Transaction): String {
+        val builder = QueryBuilder(true)
+        val sql = if (data.isEmpty()) ""
+        else data.joinToString(prefix = "VALUES (", postfix = ")") { (col, value) ->
+            builder.registerArgument(col, value)
+        }
 
-    open fun <T : String?> groupConcat(expr: GroupConcat<T>, queryBuilder: QueryBuilder) = buildString {
-        append("GROUP_CONCAT(")
-        if (expr.distinct)
-            append("DISTINCT ")
-        append(expr.expr.toSQL(queryBuilder))
-        if (expr.orderBy.isNotEmpty()) {
-            expr.orderBy.joinTo(this, prefix = " ORDER BY ") {
-                "${it.first.toSQL(queryBuilder)} ${it.second.name}"
-            }
+        val columns = data.map { it.first }
+
+        val def = insert(false, table, columns, sql, transaction)
+
+        val uniqueCols = columns.filter { it.indexInPK != null }.sortedBy { it.indexInPK }
+        if (uniqueCols.isEmpty())
+            transaction.throwUnsupportedException("Postgres replace table must supply at least one primary key")
+        val conflictKey = uniqueCols.joinToString { transaction.identity(it) }
+        return def + "ON CONFLICT ($conflictKey) DO UPDATE SET " + columns.joinToString { "${transaction.identity(it)}=EXCLUDED.${transaction.identity(it)}" }
+    }
+
+    fun <T : String?> groupConcat(expr: GroupConcat<T>, queryBuilder: QueryBuilder): String {
+        val tr = TransactionManager.current()
+        return when {
+            expr.orderBy.isNotEmpty() -> tr.throwUnsupportedException("PostgreSQL doesn't support ORDER BY in STRING_AGG.")
+            expr.distinct -> tr.throwUnsupportedException("PostgreSQL doesn't support DISTINCT in STRING_AGG.")
+            expr.separator == null -> tr.throwUnsupportedException("PostgreSQL requires explicit separator in STRING_AGG.")
+            else -> "STRING_AGG(${expr.expr.toSQL(queryBuilder)}, '${expr.separator}')"
         }
-        expr.separator?.let {
-            append(" SEPARATOR '$it'")
-        }
-        append(")")
     }
 
     interface MatchMode {
@@ -138,8 +138,8 @@ data class ColumnMetadata(val name: String, val type: Int, val nullable: Boolean
 
 interface DatabaseDialect {
     val name: String
-    val dataTypeProvider: DataTypeProvider
-    val functionProvider: FunctionProvider
+    val dataTypeProvider: PostgresDataTypeProvider
+    val functionProvider: PostgresFunctionProvider
 
     fun getDatabase(): String
 
@@ -167,7 +167,8 @@ interface DatabaseDialect {
 
     fun supportsSelectForUpdate(): Boolean
     val supportsMultipleGeneratedKeys: Boolean
-    fun isAllowedAsColumnDefault(e: Expression<*>) = e is LiteralOp<*>
+
+    fun isAllowedAsColumnDefault(e: Expression<*>) = true
 
     // --> REVIEW
     val supportsIfNotExists: Boolean get() = true
@@ -186,9 +187,11 @@ interface DatabaseDialect {
     fun modifyColumn(column: Column<*>) : String
 }
 
-abstract class VendorDialect(override val name: String,
-                                      override val dataTypeProvider: DataTypeProvider,
-                                      override val functionProvider: FunctionProvider) : DatabaseDialect {
+class PostgreSQLDialect : DatabaseDialect {
+
+    override val name = "postgresql"
+    override val dataTypeProvider = PostgresDataTypeProvider
+    override val functionProvider = PostgresFunctionProvider
 
     /* Cached values */
     private var _allTableNames: List<String>? = null
@@ -356,7 +359,19 @@ abstract class VendorDialect(override val name: String,
 
     override val supportsMultipleGeneratedKeys: Boolean = true
 
-    override fun modifyColumn(column: Column<*>): String = "MODIFY COLUMN ${column.descriptionDdl()}"
+    override fun modifyColumn(column: Column<*>): String = buildString {
+        val colName = TransactionManager.current().identity(column)
+        append("ALTER COLUMN $colName TYPE ${column.columnType.sqlType()},")
+        append("ALTER COLUMN $colName ")
+        if (column.columnType.nullable)
+            append("DROP ")
+        else
+            append("SET ")
+        append("NOT NULL")
+        column.dbDefaultValue?.let {
+            append(", ALTER COLUMN $colName SET DEFAULT ${PostgresDataTypeProvider.processForDefaultValue(it)}")
+        }
+    }
 
 }
 
@@ -367,6 +382,6 @@ internal val currentDialectIfAvailable : DatabaseDialect? get() =
         currentDialect
     } else null
 
-internal fun String.inProperCase(): String = (currentDialectIfAvailable as? VendorDialect)?.run {
+internal fun String.inProperCase(): String = (currentDialectIfAvailable as? PostgreSQLDialect)?.run {
     this@inProperCase.inProperCase
 } ?: this
