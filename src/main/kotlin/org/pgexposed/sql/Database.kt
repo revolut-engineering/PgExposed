@@ -4,13 +4,15 @@ import org.pgexposed.sql.transactions.DEFAULT_ISOLATION_LEVEL
 import org.pgexposed.sql.transactions.DEFAULT_REPETITION_ATTEMPTS
 import org.pgexposed.sql.transactions.ThreadLocalTransactionManager
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.*
+import org.pgexposed.sql.vendors.ANSI_SQL_2003_KEYWORDS
+import org.pgexposed.sql.vendors.PostgreSQLDialect
+import org.pgexposed.sql.vendors.VENDORS_KEYWORDS
+import org.pgexposed.sql.vendors.currentDialect
 import java.math.BigDecimal
 import java.sql.Connection
 import java.sql.DatabaseMetaData
 import java.sql.DriverManager
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 import javax.sql.DataSource
 
 class Database private constructor(val connector: () -> Connection) {
@@ -25,12 +27,7 @@ class Database private constructor(val connector: () -> Connection) {
     }
 
     val url: String by lazy { metadata.url }
-
-    val dialect by lazy {
-        val name = url.removePrefix("jdbc:").substringBefore(':')
-        dialects[name.toLowerCase()]?.invoke() ?: error("No dialect registered for $name. URL=$url")
-    }
-
+    val dialect = Database.dialect
     val vendor: String get() = dialect.name
 
     val version by lazy {
@@ -70,15 +67,7 @@ class Database private constructor(val connector: () -> Connection) {
     private fun Char.isIdentifierStart(): Boolean = this in 'a'..'z' || this in 'A'..'Z' || this == '_' || this in extraNameCharacters
 
     companion object {
-        private val dialects = ConcurrentHashMap<String, () ->DatabaseDialect>()
-
-        init {
-            registerDialect(PostgreSQLDialect.dialectName) { PostgreSQLDialect() }
-        }
-
-        fun registerDialect(prefix:String, dialect: () -> DatabaseDialect) {
-            dialects[prefix] = dialect
-        }
+        private val dialect = PostgreSQLDialect()
 
         private fun doConnect(getNewConnection: () -> Connection, setupConnection: (Connection) -> Unit = {},
                     manager: (Database) -> TransactionManager = { ThreadLocalTransactionManager(it, DEFAULT_ISOLATION_LEVEL, DEFAULT_REPETITION_ATTEMPTS) }

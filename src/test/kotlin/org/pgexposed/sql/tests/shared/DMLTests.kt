@@ -2,6 +2,9 @@ package org.pgexposed.sql.tests.shared
 
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.not
+import org.joda.time.DateTime
+import org.junit.Assert.assertThat
+import org.junit.Test
 import org.pgexposed.dao.*
 import org.pgexposed.exceptions.UnsupportedByDialectException
 import org.pgexposed.sql.*
@@ -11,10 +14,8 @@ import org.pgexposed.sql.statements.BatchDataInconsistentException
 import org.pgexposed.sql.statements.BatchInsertStatement
 import org.pgexposed.sql.tests.DatabaseTestsBase
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.*
-import org.joda.time.DateTime
-import org.junit.Assert.assertThat
-import org.junit.Test
+import org.pgexposed.sql.vendors.DatabaseDialect
+import org.pgexposed.sql.vendors.PostgreSQLDialect
 import java.math.BigDecimal
 import java.util.*
 import kotlin.reflect.KClass
@@ -23,7 +24,7 @@ import kotlin.test.*
 object DMLTestsData {
     object Cities : Table() {
         val id = integer("cityId").autoIncrement("cities_seq").primaryKey() // PKColumn<Int>
-        val name = varchar("name", 50) // Column<String>
+        val name = varchar("name", 50).uniqueIndex("city_name_idx") // Column<String>
     }
 
     object Users : Table() {
@@ -1063,13 +1064,13 @@ class DMLTests : DatabaseTestsBase() {
         }
 
         withTables(idTable) {
-            idTable.insertIgnoreAndGetId {
+            idTable.insertIgnore {
                 it[idTable.name] = "1"
             }
 
             assertEquals(1, idTable.selectAll().count())
 
-            idTable.insertIgnoreAndGetId {
+            idTable.insertIgnore {
                 it[idTable.name] = "2"
             }
 
@@ -1092,6 +1093,32 @@ class DMLTests : DatabaseTestsBase() {
                 this[cities.name] = name
             }
             assertEquals(cityNames.size, allCitiesID.size)
+
+            val userNamesWithCityIds = allCitiesID.mapIndexed { index, id ->
+                "UserFrom${cityNames[index]}" to id[cities.id] as Number
+            }
+
+            val generatedIds = users.batchInsert(userNamesWithCityIds) { (userName, cityId) ->
+                this[users.id] = java.util.Random().nextInt().toString().take(6)
+                this[users.name] = userName
+                this[users.cityId] = cityId.toInt()
+            }
+
+            assertEquals(userNamesWithCityIds.size, generatedIds.size)
+            assertEquals(userNamesWithCityIds.size, users.select { users.name inList userNamesWithCityIds.map { it.first } }.count())
+        }
+    }
+
+    @Test
+    fun testBatchInsert02IgnoringDuplicates() {
+        withCitiesAndUsers { cities, users, _ ->
+            addLogger(StdOutSqlLogger)
+            val cityNames = listOf("Krakow", "Paris", "Moscow", "Helsinki", "Krakow")
+            val allCitiesID = cities.batchInsert(cityNames, ignore = true) { name ->
+                this[cities.name] = name
+            }.filter { it.hasValue(DMLTestsData.Cities.id) }
+
+            assertEquals(cityNames.size - 1, allCitiesID.size)
 
             val userNamesWithCityIds = allCitiesID.mapIndexed { index, id ->
                 "UserFrom${cityNames[index]}" to id[cities.id] as Number
@@ -1213,7 +1240,11 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSelectDistinct() {
-        val tbl = DMLTestsData.Cities
+        val tbl = object: Table("Duplicate") {
+            val id = integer("id").autoIncrement("id_seq").primaryKey()
+            val name = varchar("name", 50)
+        }
+
         withTables(tbl) {
             tbl.insert { it[tbl.name] = "test" }
             tbl.insert { it[tbl.name] = "test" }

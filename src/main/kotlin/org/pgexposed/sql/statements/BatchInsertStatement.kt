@@ -1,9 +1,10 @@
 package org.pgexposed.sql.statements
 
-import org.pgexposed.sql.*
+import org.pgexposed.sql.Column
+import org.pgexposed.sql.ResultRow
+import org.pgexposed.sql.Table
+import org.pgexposed.sql.isAutoInc
 import org.pgexposed.sql.transactions.TransactionManager
-import java.sql.PreparedStatement
-import java.sql.ResultSet
 import java.util.*
 
 internal class BatchDataInconsistentException(message : String) : Exception(message)
@@ -64,42 +65,4 @@ open class BatchInsertStatement(table: Table, ignore: Boolean = false): InsertSt
         }
 
     override fun valuesAndDefaults(values: Map<Column<*>, Any?>) = arguments!!.first().toMap()
-}
-
-open class SQLServerBatchInsertStatement(table: Table, ignore: Boolean = false) : BatchInsertStatement(table, ignore) {
-    override val isAlwaysBatch: Boolean = false
-    private val OUTPUT_ROW_LIMIT = 1000
-    private val OUTPUT_PARAMS_LIMIT = 5000
-
-    override fun validateLastBatch() {
-        super.validateLastBatch()
-        if (data.size > OUTPUT_ROW_LIMIT) {
-            throw BatchDataInconsistentException("Too much rows in one batch. Exceed $OUTPUT_ROW_LIMIT limit")
-        }
-        val paramsToInsert = data.firstOrNull()?.size ?: 0
-        if (paramsToInsert * (data.size + 1) > OUTPUT_PARAMS_LIMIT) {
-            throw BatchDataInconsistentException("Too much parameters for batch with OUTPUT. Exceed $OUTPUT_PARAMS_LIMIT limit")
-        }
-    }
-
-    override fun prepareSQL(transaction: Transaction): String {
-        val values = arguments!!
-        val sql = if (values.isEmpty()) ""
-        else {
-            val builder = QueryBuilder(true)
-            val output = table.autoIncColumn?.let { " OUTPUT inserted.${transaction.identity(it)} AS GENERATED_KEYS" }.orEmpty()
-            values.joinToString(prefix = "$output VALUES") {
-                it.joinToString(prefix = "(", postfix = ")") { (col, value) ->
-                    builder.registerArgument(col, value)
-                }
-            }
-        }
-        return transaction.db.dialect.functionProvider.insert(isIgnore, table, values.firstOrNull()?.map { it.first }.orEmpty(), sql, transaction)
-    }
-
-    override fun arguments() = listOfNotNull(super.arguments().flatten().takeIf { data.isNotEmpty() })
-
-    override fun PreparedStatement.execInsertFunction(): Pair<Int, ResultSet?> {
-        return arguments!!.size to executeQuery()
-    }
 }
