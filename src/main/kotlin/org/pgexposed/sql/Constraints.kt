@@ -1,8 +1,8 @@
 package org.pgexposed.sql
 
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.currentDialect
-import org.pgexposed.sql.vendors.inProperCase
+import org.pgexposed.sql.postgres.currentDialect
+import org.pgexposed.sql.postgres.inProperCase
 import java.sql.DatabaseMetaData
 
 interface DdlAware {

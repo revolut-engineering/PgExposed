@@ -3,7 +3,7 @@ package org.pgexposed.sql
 import org.pgexposed.dao.EntityID
 import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.*
+import org.pgexposed.sql.postgres.*
 import java.math.BigDecimal
 import java.sql.Blob
 import java.time.LocalDateTime

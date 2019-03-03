@@ -1,5 +1,5 @@
 package org.pgexposed.sql
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.*

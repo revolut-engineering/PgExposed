@@ -4,7 +4,7 @@ import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.statements.Statement
 import org.pgexposed.sql.statements.StatementType
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.time.Duration

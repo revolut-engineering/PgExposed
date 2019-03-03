@@ -1,8 +1,8 @@
 package org.pgexposed.sql.tests.shared
 
 import org.pgexposed.sql.Transaction
-import org.pgexposed.sql.vendors.currentDialect
-import org.pgexposed.sql.vendors.currentDialectIfAvailable
+import org.pgexposed.sql.postgres.currentDialect
+import org.pgexposed.sql.postgres.currentDialectIfAvailable
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFails

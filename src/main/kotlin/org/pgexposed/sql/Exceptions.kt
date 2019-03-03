@@ -8,7 +8,7 @@ import org.pgexposed.sql.QueryBuilder
 import org.pgexposed.sql.Transaction
 import org.pgexposed.sql.statements.StatementContext
 import org.pgexposed.sql.statements.expandArgs
-import org.pgexposed.sql.vendors.DatabaseDialect
+import org.pgexposed.sql.postgres.DatabaseDialect
 import java.sql.SQLException
 
 class EntityNotFoundException(val id: EntityID<*>, val entity: EntityClass<*, *>): Exception("Entity ${entity.klass.simpleName}, id=$id not found in database")

@@ -4,8 +4,8 @@ import org.pgexposed.dao.EntityID
 import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.statements.*
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.currentDialect
-import org.pgexposed.sql.vendors.inProperCase
+import org.pgexposed.sql.postgres.currentDialect
+import org.pgexposed.sql.postgres.inProperCase
 import java.util.*
 
 /**

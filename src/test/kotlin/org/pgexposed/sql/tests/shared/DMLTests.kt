@@ -13,8 +13,8 @@ import org.pgexposed.sql.statements.BatchDataInconsistentException
 import org.pgexposed.sql.statements.BatchInsertStatement
 import org.pgexposed.sql.tests.DatabaseTestsBase
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.DatabaseDialect
-import org.pgexposed.sql.vendors.PostgreSQLDialect
+import org.pgexposed.sql.postgres.DatabaseDialect
+import org.pgexposed.sql.postgres.PostgreSQLDialect
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime

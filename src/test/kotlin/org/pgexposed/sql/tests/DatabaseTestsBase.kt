@@ -4,7 +4,7 @@ import com.opentable.db.postgres.embedded.EmbeddedPostgres
 import org.pgexposed.sql.*
 import org.pgexposed.sql.tests.TestDB.POSTGRESQL
 import org.pgexposed.sql.transactions.transaction
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.util.*
 import kotlin.concurrent.thread
 

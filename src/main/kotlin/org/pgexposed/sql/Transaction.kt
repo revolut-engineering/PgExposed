@@ -7,8 +7,8 @@ import org.pgexposed.sql.statements.Statement
 import org.pgexposed.sql.statements.StatementInterceptor
 import org.pgexposed.sql.statements.StatementType
 import org.pgexposed.sql.transactions.TransactionInterface
-import org.pgexposed.sql.vendors.currentDialect
-import org.pgexposed.sql.vendors.inProperCase
+import org.pgexposed.sql.postgres.currentDialect
+import org.pgexposed.sql.postgres.inProperCase
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.util.concurrent.ConcurrentHashMap

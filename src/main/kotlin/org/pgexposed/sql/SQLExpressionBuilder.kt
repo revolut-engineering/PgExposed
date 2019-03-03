@@ -3,8 +3,7 @@ package org.pgexposed.sql
 
 import org.pgexposed.dao.EntityID
 import org.pgexposed.dao.IdTable
-import org.pgexposed.sql.vendors.PostgresFunctionProvider
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -165,11 +164,9 @@ object SqlExpressionBuilder {
 
     fun ExpressionWithColumnType<Int>.intToDecimal(): ExpressionWithColumnType<BigDecimal> = NoOpConversion(this, DecimalColumnType(15, 0))
 
-    fun <T : String?> ExpressionWithColumnType<T>.match(pattern: String, mode: PostgresFunctionProvider.MatchMode?): Op<Boolean> {
+    fun <T : String?> ExpressionWithColumnType<T>.match(pattern: String): Op<Boolean> {
         return with(currentDialect.functionProvider) {
-            this@match.match(pattern, mode)
+            this@match.match(pattern)
         }
     }
-
-    infix fun <T: String?> ExpressionWithColumnType<T>.match(pattern: String): Op<Boolean> = match(pattern, null)
 }

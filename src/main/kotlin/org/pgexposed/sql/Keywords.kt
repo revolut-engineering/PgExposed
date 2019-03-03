@@ -1,4 +1,4 @@
-package org.pgexposed.sql.vendors
+package org.pgexposed.sql
 
 val ANSI_SQL_2003_KEYWORDS = setOf(
         "ADD",

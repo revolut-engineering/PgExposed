@@ -4,8 +4,8 @@ import org.pgexposed.dao.*
 import org.pgexposed.sql.*
 import org.pgexposed.sql.tests.DatabaseTestsBase
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.PostgreSQLDialect
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.PostgreSQLDialect
+import org.pgexposed.sql.postgres.currentDialect
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.postgresql.util.PGobject

@@ -1,8 +1,8 @@
 package org.pgexposed.sql
 
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.currentDialect
-import org.pgexposed.sql.vendors.currentDialectIfAvailable
+import org.pgexposed.sql.postgres.currentDialect
+import org.pgexposed.sql.postgres.currentDialectIfAvailable
 
 private val comparator = compareBy<Column<*>>({ it.table.tableName }, { it.name })
 

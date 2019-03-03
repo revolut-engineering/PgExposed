@@ -1,8 +1,8 @@
 package org.pgexposed.sql.statements
 
 import org.pgexposed.sql.*
-import org.pgexposed.sql.vendors.PostgreSQLDialect
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.PostgreSQLDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException

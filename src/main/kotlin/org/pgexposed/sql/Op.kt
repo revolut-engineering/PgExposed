@@ -1,7 +1,7 @@
 package org.pgexposed.sql
 
 import org.pgexposed.dao.EntityID
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.time.LocalDateTime
 
 abstract class Op<T> : Expression<T>() {

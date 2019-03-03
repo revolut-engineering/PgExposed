@@ -4,9 +4,7 @@ import org.pgexposed.sql.transactions.DEFAULT_ISOLATION_LEVEL
 import org.pgexposed.sql.transactions.DEFAULT_REPETITION_ATTEMPTS
 import org.pgexposed.sql.transactions.ThreadLocalTransactionManager
 import org.pgexposed.sql.transactions.TransactionManager
-import org.pgexposed.sql.vendors.ANSI_SQL_2003_KEYWORDS
-import org.pgexposed.sql.vendors.PostgreSQLDialect
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.PostgreSQLDialect
 import java.math.BigDecimal
 import java.sql.Connection
 import java.sql.DatabaseMetaData

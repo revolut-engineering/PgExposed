@@ -3,7 +3,7 @@ package org.pgexposed.sql
 import org.pgexposed.dao.EntityID
 import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.statements.DefaultValueMarker
-import org.pgexposed.sql.vendors.currentDialect
+import org.pgexposed.sql.postgres.currentDialect
 import java.io.InputStream
 import java.math.BigDecimal
 import java.math.RoundingMode
