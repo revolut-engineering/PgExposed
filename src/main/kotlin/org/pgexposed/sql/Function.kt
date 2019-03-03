@@ -1,7 +1,7 @@
 package org.pgexposed.sql
 import org.pgexposed.sql.vendors.currentDialect
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import java.util.*
 
 abstract class Function<T>(override val columnType: IColumnType) : ExpressionWithColumnType<T>()
@@ -11,15 +11,15 @@ class Count(val expr: Expression<*>, val distinct: Boolean = false): Function<In
             "COUNT(${if (distinct) "DISTINCT " else ""}${expr.toSQL(queryBuilder)})"
 }
 
-class Date<T:DateTime?>(val expr: Expression<T>): Function<DateTime>(DateColumnType(false)) {
+class Date<T:LocalDateTime?>(val expr: Expression<T>): Function<LocalDateTime>(DateColumnType(false)) {
     override fun toSQL(queryBuilder: QueryBuilder): String = "DATE(${expr.toSQL(queryBuilder)})"
 }
 
-class CurrentDateTime : Function<DateTime>(DateColumnType(false)) {
+class CurrentDateTime : Function<LocalDateTime>(DateColumnType(false)) {
     override fun toSQL(queryBuilder: QueryBuilder) = "CURRENT_TIMESTAMP"
 }
 
-class Month<T:DateTime?>(val expr: Expression<T>): Function<Int>(IntegerColumnType()) {
+class Month<T:LocalDateTime?>(val expr: Expression<T>): Function<Int>(IntegerColumnType()) {
     override fun toSQL(queryBuilder: QueryBuilder): String = "MONTH(${expr.toSQL(queryBuilder)})"
 }
 

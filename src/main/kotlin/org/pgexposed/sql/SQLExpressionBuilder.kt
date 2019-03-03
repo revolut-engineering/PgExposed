@@ -5,14 +5,14 @@ import org.pgexposed.dao.EntityID
 import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.vendors.FunctionProvider
 import org.pgexposed.sql.vendors.currentDialect
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 fun ExpressionWithColumnType<*>.count() : Function<Int> = Count(this)
 
-fun <T: DateTime?> Expression<T>.date() = Date(this)
+fun <T: LocalDateTime?> Expression<T>.date() = Date(this)
 
-fun <T: DateTime?> Expression<T>.month() = Month(this)
+fun <T: LocalDateTime?> Expression<T>.month() = Month(this)
 
 fun Column<*>.countDistinct() : Function<Int> = Count(this, true)
 
@@ -157,7 +157,7 @@ object SqlExpressionBuilder {
         is Int -> intLiteral(value)
         is Long -> longLiteral(value)
         is String -> stringLiteral(value)
-        is DateTime -> if ((columnType as DateColumnType).time) dateTimeLiteral(value) else dateLiteral(value)
+        is LocalDateTime -> if ((columnType as DateColumnType).time) dateTimeLiteral(value) else dateLiteral(value)
         else -> LiteralOp(columnType, value)
     } as LiteralOp<T>
 

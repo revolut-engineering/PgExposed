@@ -6,8 +6,8 @@ import org.pgexposed.sql.*
 import org.pgexposed.sql.tests.DatabaseTestsBase
 import org.pgexposed.sql.transactions.TransactionManager
 import org.pgexposed.sql.transactions.inTopLevelTransaction
-import org.joda.time.DateTime
 import org.junit.Test
+import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import javax.sql.rowset.serial.SerialBlob
@@ -173,7 +173,7 @@ class EntityTests: DatabaseTestsBase() {
                     DBDefault.new { field = "1" },
                     DBDefault.new {
                         field = "2"
-                        b1 = DateTime.now().minusDays(5)
+                        b1 = LocalDateTime.now().minusDays(5)
                     })
             flushCache()
             created.forEach {
@@ -190,7 +190,7 @@ class EntityTests: DatabaseTestsBase() {
             val created = listOf(
                     DBDefault.new{
                         field = "2"
-                        b1 = DateTime.now().minusDays(5)
+                        b1 = LocalDateTime.now().minusDays(5)
                     }, DBDefault.new{ field = "1" })
 
             flushCache()

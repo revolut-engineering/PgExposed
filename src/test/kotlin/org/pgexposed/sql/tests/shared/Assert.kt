@@ -3,7 +3,7 @@ package org.pgexposed.sql.tests.shared
 import org.pgexposed.sql.Transaction
 import org.pgexposed.sql.vendors.currentDialect
 import org.pgexposed.sql.vendors.currentDialectIfAvailable
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.fail
@@ -41,13 +41,13 @@ fun<T> assertEqualLists (l1: List<T>, vararg expected : T) {
     assertEqualLists(l1, expected.toList())
 }
 
-fun assertEqualDateTime(d1: DateTime?, d2: DateTime?) {
+fun assertEqualDateTime(d1: LocalDateTime?, d2: LocalDateTime?) {
     when{
         d1 == null && d2 == null -> return
         d1 == null && d2 != null -> error("d1 is null while d2 is not on ${currentDialect.name}")
         d2 == null -> error ("d1 is not null while d2 is null on ${currentDialect.name}")
         d1 == null -> error("Impossible")
-        else -> assertEquals(d1.millis, d2.millis,   "Failed on ${currentDialect.name}")
+        else -> assertEquals(d1.nano, d2.nano,   "Failed on ${currentDialect.name}")
     }
 }
 
@@ -61,7 +61,7 @@ fun Transaction.assertFailAndRollback(message: kotlin.String, block: () -> Unit)
     rollback()
 }
 
-fun equalDateTime(d1: DateTime?, d2: DateTime?) = try {
+fun equalDateTime(d1: LocalDateTime?, d2: LocalDateTime?) = try {
     assertEqualDateTime(d1, d2)
     true
 } catch (e: Exception) {

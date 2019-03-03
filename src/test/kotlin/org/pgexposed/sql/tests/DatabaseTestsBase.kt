@@ -5,7 +5,6 @@ import org.pgexposed.sql.*
 import org.pgexposed.sql.tests.TestDB.POSTGRESQL
 import org.pgexposed.sql.transactions.transaction
 import org.pgexposed.sql.vendors.currentDialect
-import org.joda.time.DateTimeZone
 import java.util.*
 import kotlin.concurrent.thread
 
@@ -34,7 +33,6 @@ abstract class DatabaseTestsBase {
         val dbSettings = POSTGRESQL
 
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-        DateTimeZone.setDefault(DateTimeZone.UTC)
 
         if (dbSettings !in registeredOnShutdown) {
             dbSettings.beforeConnection()

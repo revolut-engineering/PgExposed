@@ -4,10 +4,6 @@ import org.pgexposed.dao.EntityID
 import org.pgexposed.dao.IdTable
 import org.pgexposed.sql.statements.DefaultValueMarker
 import org.pgexposed.sql.vendors.currentDialect
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-import org.joda.time.format.DateTimeFormat
-import org.joda.time.format.ISODateTimeFormat
 import java.io.InputStream
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -16,6 +12,10 @@ import java.sql.Blob
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Types
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.sql.rowset.serial.SerialBlob
 import kotlin.reflect.KClass
@@ -211,8 +211,8 @@ class EnumerationNameColumnType<T:Enum<T>>(val klass: KClass<T>, colLength: Int)
     }
 }
 
-private val DEFAULT_DATE_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd").withLocale(Locale.ROOT)
-private val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss.SSSSSS").withLocale(Locale.ROOT)
+private val DEFAULT_DATE_STRING_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM-dd").withLocale(Locale.ROOT)
+private val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss.SSSSSS").withLocale(Locale.ROOT)
 
 class DateColumnType(val time: Boolean): ColumnType() {
     override fun sqlType(): String  = if (time) currentDialect.dataTypeProvider.dateTimeType() else "DATE"
@@ -221,46 +221,39 @@ class DateColumnType(val time: Boolean): ColumnType() {
         if (value is String) return value
 
         val dateTime = when (value) {
-            is DateTime -> value
-            is java.sql.Date -> DateTime(value.time)
-            is java.sql.Timestamp -> DateTime(value.time)
+            is LocalDateTime -> value
+            is java.sql.Date -> value.toLocalDate().atStartOfDay()
+            is java.sql.Timestamp -> value.toLocalDateTime()
             else -> error("Unexpected value: $value of ${value::class.qualifiedName}")
         }
 
         return if (time)
-            "'${DEFAULT_DATE_TIME_STRING_FORMATTER.print(dateTime.toDateTime(DateTimeZone.getDefault()))}'"
+            "'${DEFAULT_DATE_TIME_STRING_FORMATTER.format(dateTime)}'"
         else
-            "'${DEFAULT_DATE_STRING_FORMATTER.print(dateTime)}'"
+            "'${DEFAULT_DATE_STRING_FORMATTER.format(dateTime)}'"
     }
 
     override fun valueFromDB(value: Any): Any = when(value) {
-        is DateTime -> value
-        is java.sql.Date ->  DateTime(value.time)
-        is java.sql.Timestamp -> DateTime(value.time)
-        is Int -> DateTime(value.toLong())
-        is Long -> DateTime(value)
+        is LocalDateTime -> value
+        is java.sql.Date ->  value.toLocalDate().atStartOfDay()
+        is java.sql.Timestamp -> value.toLocalDateTime()
+        is Int -> LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong()), ZoneId.systemDefault())
+        is Long -> LocalDateTime.ofInstant(Instant.ofEpochMilli(value), ZoneId.systemDefault())
         is String -> value
         // REVIEW
-        else -> DEFAULT_DATE_TIME_STRING_FORMATTER.parseDateTime(value.toString())
+        else -> DEFAULT_DATE_TIME_STRING_FORMATTER.parse(value.toString())
     }
 
-    override fun notNullValueToDB(value: Any): Any {
-        if (value is DateTime) {
-            val millis = value.millis
-            if (time) {
-                return java.sql.Timestamp(millis)
-            } else {
-                return java.sql.Date(millis)
-            }
-        }
-        return value
+    override fun notNullValueToDB(value: Any): Any = when {
+        value is LocalDateTime && time -> java.sql.Timestamp.valueOf(value)
+        value is LocalDateTime -> java.sql.Date.valueOf(value.toLocalDate())
+        else -> value
     }
 }
 
 abstract class StringColumnType(val collate: String? = null) : ColumnType() {
     private val charactersToEscape = mapOf(
             '\'' to "\'\'",
-//            '\"' to "\"\"", // no need to escape double quote as we put string in single quotes
             '\r' to "\\r",
             '\n' to "\\n")
 
