@@ -8,7 +8,7 @@ plugins {
 
 apply from: "$rootDir/gradle/versioning.gradle"
 
-group = 'org.pgexposed'
+group = 'com.revolut'
 
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
@@ -82,7 +82,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            groupId 'org.pgexposed'
+            groupId 'com.revolut'
             artifact sourcesJar
         }
     }
@@ -99,9 +99,9 @@ bintray {
         repo = 'maven'
         name = 'pgexposed'
         desc = 'PgExposed Kotlin SQL Lib'
-        websiteUrl = 'https://github.com/spolnik/PgExposed'
-        issueTrackerUrl = 'https://github.com/spolnik/PgExposed/issues'
-        vcsUrl = 'https://github.com/spolnik/PgExposed.git'
+        websiteUrl = 'https://github.com/Revolut-Engineering/PgExposed'
+        issueTrackerUrl = 'https://github.com/Revolut-Engineering/PgExposed/issues'
+        vcsUrl = 'https://github.com/Revolut-Engineering/PgExposed.git'
         publicDownloadNumbers = true
         licenses = ['Apache-2.0']
         labels = ['postgres', 'kotlin', 'sql', 'orm']

@@ -1,7 +1,7 @@
 package demo.sql
 
-import org.pgexposed.sql.*
-import org.pgexposed.sql.transactions.transaction
+import com.revolut.pgexposed.sql.*
+import com.revolut.pgexposed.sql.transactions.transaction
 import kotlin.test.assertEquals
 
 object Users : Table() {

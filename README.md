@@ -165,5 +165,3 @@ Outputs:
     SQL: DROP TABLE Users
     SQL: DROP TABLE Cities
 ```
-
-More examples and documentation on the [wiki](https://github.com/spolnik/Exposed/wiki).
