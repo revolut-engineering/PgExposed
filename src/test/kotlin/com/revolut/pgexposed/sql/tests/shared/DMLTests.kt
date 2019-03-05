@@ -1,9 +1,5 @@
 package com.revolut.pgexposed.sql.tests.shared
 
-import org.hamcrest.Matchers.containsInAnyOrder
-import org.hamcrest.Matchers.not
-import org.junit.Assert.assertThat
-import org.junit.Test
 import com.revolut.pgexposed.exceptions.UnsupportedByDialectException
 import com.revolut.pgexposed.sql.*
 import com.revolut.pgexposed.sql.Function
@@ -14,6 +10,11 @@ import com.revolut.pgexposed.sql.tests.DatabaseTestsBase
 import com.revolut.pgexposed.sql.tests.shared.DMLTestsData.sampleBigDecimalValue
 import com.revolut.pgexposed.sql.tests.shared.DMLTestsData.stPetersburg
 import com.revolut.pgexposed.sql.transactions.TransactionManager
+import com.revolut.pgexposed.sql.transactions.transaction
+import org.hamcrest.Matchers.containsInAnyOrder
+import org.hamcrest.Matchers.not
+import org.junit.Assert.assertThat
+import org.junit.Test
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -1080,6 +1081,31 @@ class DMLTests : DatabaseTestsBase() {
 
             assertEquals(userNamesWithCityIds.size, generatedIds.size)
             assertEquals(userNamesWithCityIds.size, users.select { users.name inList userNamesWithCityIds.map { it.first } }.count())
+        }
+    }
+
+    @Test
+    fun testBatchInsert02WithDefaultValueSetOnDb() {
+        withDb {
+            transaction {
+                exec("CREATE TABLE TEST(id INT PRIMARY KEY, date timestamp NOT NULL DEFAULT clock_timestamp());")
+            }
+        }
+
+        val TestTable = object: Table("TEST") {
+            val id = integer("id").primaryKey()
+            val date = datetime("date")
+        }
+
+        withTables(TestTable) {
+            addLogger(StdOutSqlLogger)
+            val ids = listOf(1..5).flatten()
+            val values = TestTable.batchInsert(ids) { id ->
+                this[TestTable.id] = id
+            }
+
+            assertEquals(values.size, 5)
+            assertEquals(values.size, TestTable.selectAll().count())
         }
     }
 

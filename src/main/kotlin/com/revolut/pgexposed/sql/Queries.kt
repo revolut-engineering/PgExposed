@@ -43,28 +43,13 @@ fun <T:Table> T.insert(body: T.(InsertStatement<Number>)->Unit): InsertStatement
  */
 fun <T:Table, E:Any> T.batchInsert(data: Iterable<E>, ignore: Boolean = false, body: BatchInsertStatement.(E)->Unit): List<ResultRow> {
     if (data.count() == 0) return emptyList()
-    fun newBatchStatement() : BatchInsertStatement {
-        return BatchInsertStatement(this, ignore)
-    }
-    var statement = newBatchStatement()
 
+    val statement = BatchInsertStatement(this, ignore)
     val result = ArrayList<ResultRow>()
-    fun BatchInsertStatement.handleBatchException(body: BatchInsertStatement.() -> Unit) {
-        try {
-            body()
-        } catch (e: BatchDataInconsistentException) {
-            execute(TransactionManager.current())
-            result += resultedValues.orEmpty()
-            statement = newBatchStatement()
-        }
-    }
 
     for (element in data) {
-        statement.handleBatchException { addBatch() }
-        statement.handleBatchException {
-            body(element)
-            validateLastBatch()
-        }
+        statement.addBatch()
+        statement.body(element)
     }
     if (statement.arguments().isNotEmpty()) {
         statement.execute(TransactionManager.current())
