@@ -19,22 +19,21 @@ abstract class Statement<out T>(val type: StatementType, val targets: List<Table
     open fun prepared(transaction: Transaction, sql: String) : PreparedStatement =
         transaction.connection.prepareStatement(sql, PreparedStatement.NO_GENERATED_KEYS)!!
 
-    open val isAlwaysBatch: Boolean get() = false
-
     fun execute(transaction: Transaction): T? = transaction.exec(this)
 
     internal fun executeIn(transaction: Transaction): Pair<T?, List<StatementContext>> {
         val arguments = arguments()
-        val contexts = if (arguments.count() > 0) {
-            arguments.map { args ->
-                val context = StatementContext(this, args)
+        val contexts = when {
+            arguments.count() > 0 ->
+                StatementContext(this, arguments.flatten()).let { context ->
+                    transaction.interceptors.forEach { it.beforeExecution(transaction, context) }
+                    listOf(context)
+                }
+            else -> {
+                val context = StatementContext(this, emptyList())
                 transaction.interceptors.forEach { it.beforeExecution(transaction, context) }
-                context
+                listOf(context)
             }
-        } else {
-            val context = StatementContext(this, emptyList())
-            transaction.interceptors.forEach { it.beforeExecution(transaction, context) }
-            listOf(context)
         }
 
         val statement = try {
@@ -44,8 +43,6 @@ abstract class Statement<out T>(val type: StatementType, val targets: List<Table
         }
         contexts.forEachIndexed { _, context ->
             statement.fillParameters(context.args)
-            // REVIEW
-            if (contexts.size > 1 || isAlwaysBatch) statement.addBatch()
         }
         if (!transaction.db.supportsMultipleResultSets) transaction.closeExecutedStatements()
 

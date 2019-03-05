@@ -1,15 +1,10 @@
 package com.revolut.pgexposed.sql.statements
 
-import com.revolut.pgexposed.sql.Column
-import com.revolut.pgexposed.sql.ResultRow
-import com.revolut.pgexposed.sql.Table
-import com.revolut.pgexposed.sql.isAutoInc
+import com.revolut.pgexposed.sql.*
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import java.util.*
 
 open class BatchInsertStatement(table: Table, ignore: Boolean = false): InsertStatement<List<ResultRow>>(table, ignore) {
-
-    override val isAlwaysBatch = true
 
     protected val data = ArrayList<MutableMap<Column<*>, Any?>>()
 
@@ -30,6 +25,21 @@ open class BatchInsertStatement(table: Table, ignore: Boolean = false): InsertSt
         }
         data.add(values)
         arguments = null
+    }
+
+    override fun prepareSQL(transaction: Transaction): String {
+        val builder = QueryBuilder(true)
+        val values = arguments!!
+
+        val sql = if(values.isEmpty()) "" else {
+            values.joinToString(prefix = "VALUES ", separator = ", ") { row ->
+                row.joinToString(prefix = "(", postfix = ")", separator = ", ") { (col, value) ->
+                    builder.registerArgument(col, value)
+                }
+            }
+        }
+        return transaction.db.dialect.functionProvider
+                .insert(isIgnore, table, values.first().map { it.first }, sql, transaction)
     }
 
     internal open fun validateLastBatch() {
