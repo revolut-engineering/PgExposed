@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/spolnik/PgExposed.svg?branch=master)](https://travis-ci.com/spolnik/PgExposed)
+[![Build Status](https://travis-ci.com/revolut-engineering/PgExposed.svg?branch=master)](https://travis-ci.com/revolut-engineering/PgExposed)
 [![codecov](https://codecov.io/gh/spolnik/PgExposed/branch/master/graph/badge.svg)](https://codecov.io/gh/spolnik/PgExposed)
 [![Download](https://api.bintray.com/packages/pgexposed/maven/pgexposed/images/download.svg) ](https://bintray.com/pgexposed/maven/pgexposed/_latestVersion)
 [![GitHub License](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
