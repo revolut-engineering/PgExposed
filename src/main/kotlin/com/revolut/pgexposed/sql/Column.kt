@@ -1,5 +1,6 @@
 package com.revolut.pgexposed.sql
 
+import com.revolut.pgexposed.sql.postgres.PostgresFunctionProvider
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import com.revolut.pgexposed.sql.postgres.currentDialect
 import com.revolut.pgexposed.sql.postgres.currentDialectIfAvailable
@@ -8,7 +9,7 @@ private val comparator = compareBy<Column<*>>({ it.table.tableName }, { it.name 
 
 class Column<T>(val table: Table, val name: String, override val columnType: IColumnType) : ExpressionWithColumnType<T>(), DdlAware, Comparable<Column<*>> {
     var referee: Column<*>? = null
-    fun <S:T> referee() : Column<S>? = referee as? Column<S>
+
     internal var onUpdate: ReferenceOption? = null
         get() = field ?: currentDialectIfAvailable?.defaultReferenceOption
     internal var onDelete: ReferenceOption? = null
@@ -59,20 +60,11 @@ class Column<T>(val table: Table, val name: String, override val columnType: ICo
 
         val _dbDefaultValue = dbDefaultValue
         if (!isPKColumn && _dbDefaultValue != null) {
-            val expressionSQL = currentDialect.dataTypeProvider.processForDefaultValue(_dbDefaultValue)
-            if (!currentDialect.isAllowedAsColumnDefault(_dbDefaultValue)) {
-                val clientDefault = when {
-                    defaultValueFun != null -> " Expression will be evaluated on client."
-                    !colType.nullable -> " Column will be created with NULL marker."
-                    else -> ""
-                }
-                exposedLogger.error("${currentDialect.name} ${tr.db.version} doesn't support expression '$expressionSQL' as default value.$clientDefault")
-            } else {
-                append(" DEFAULT $expressionSQL" )
-            }
+            val expressionSQL = PostgresFunctionProvider.processForDefaultValue(_dbDefaultValue)
+            append(" DEFAULT $expressionSQL" )
         }
 
-        if (colType.nullable || (_dbDefaultValue != null && defaultValueFun == null && !currentDialect.isAllowedAsColumnDefault(_dbDefaultValue))) {
+        if (colType.nullable) {
             append(" NULL")
         } else if (!isPKColumn) {
             append(" NOT NULL")

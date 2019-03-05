@@ -23,8 +23,7 @@ private val postgresSQLProcess by lazy {
     EmbeddedPostgres.builder()
         .setPgBinaryResolver{ system, _ ->
             EmbeddedPostgres::class.java.getResourceAsStream("/postgresql-$system-x86_64.txz")
-        }/*.setLocaleConfig("locale", locale)*/
-        .setPort(12346).start()
+        }.setPort(12346).start()
 }
 
 abstract class DatabaseTestsBase {

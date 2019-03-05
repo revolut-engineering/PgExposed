@@ -7,7 +7,7 @@ import com.revolut.pgexposed.sql.tests.shared.SortByReferenceTest.TestTables.ref
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-@Suppress("unused")
+@Suppress("unused", "ClassName")
 class SortByReferenceTest {
 
     @Test

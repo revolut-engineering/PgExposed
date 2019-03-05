@@ -8,37 +8,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.fail
 
-private fun<T> assertEqualCollectionsImpl(collection : Collection<T>, expected : Collection<T>) {
-    assertEquals (expected.size, collection.size, "Count mismatch on ${currentDialect.name}")
-    for (p in collection) {
-        assert(expected.any {p == it}) { "Unexpected element in collection pair $p on ${currentDialect.name}" }
-    }
-}
-
-fun<T> assertEqualCollections (collection : Collection<T>, expected : Collection<T>) {
-    assertEqualCollectionsImpl(collection, expected)
-}
-
-fun<T> assertEqualCollections (collection : Collection<T>, vararg expected : T) {
-    assertEqualCollectionsImpl(collection, expected.toList())
-}
-
-fun<T> assertEqualCollections (collection : Iterable<T>, vararg expected : T) {
-    assertEqualCollectionsImpl(collection.toList(), expected.toList())
-}
-
-fun<T> assertEqualCollections (collection : Iterable<T>, expected : Collection<T>) {
-    assertEqualCollectionsImpl(collection.toList(), expected)
-}
-
 fun<T> assertEqualLists (l1: List<T>, l2: List<T>) {
     assertEquals(l1.size, l2.size, "Count mismatch on ${currentDialectIfAvailable?.name.orEmpty()}")
     for (i in 0 until l1.size)
         assertEquals(l1[i], l2[i], "Error at pos $i on ${currentDialectIfAvailable?.name.orEmpty()}:")
-}
-
-fun<T> assertEqualLists (l1: List<T>, vararg expected : T) {
-    assertEqualLists(l1, expected.toList())
 }
 
 fun assertEqualDateTime(d1: LocalDateTime?, d2: LocalDateTime?) {
@@ -59,13 +32,6 @@ fun Transaction.assertFailAndRollback(message: kotlin.String, block: () -> Unit)
     }
 
     rollback()
-}
-
-fun equalDateTime(d1: LocalDateTime?, d2: LocalDateTime?) = try {
-    assertEqualDateTime(d1, d2)
-    true
-} catch (e: Exception) {
-    false
 }
 
 inline fun <reified T:Exception> expectException(body: () -> Unit) {

@@ -6,10 +6,6 @@ import com.revolut.pgexposed.sql.Table
 import com.revolut.pgexposed.sql.VarCharColumnType
 import java.util.*
 
-/**
- * @author max
- */
-
 abstract class UpdateBuilder<out T>(type: StatementType, targets: List<Table>): Statement<T>(type, targets) {
     protected val values: MutableMap<Column<*>, Any?> = LinkedHashMap()
 

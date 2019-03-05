@@ -12,7 +12,7 @@ class ThreadLocalTransactionManager(private val db: Database,
                                     @Volatile override var defaultIsolationLevel: Int,
                                     @Volatile override var defaultRepetitionAttempts: Int) : TransactionManager {
 
-    val threadLocal = ThreadLocal<Transaction>()
+    private val threadLocal = ThreadLocal<Transaction>()
 
     override fun newTransaction(isolation: Int): Transaction = Transaction(ThreadLocalTransaction(db, isolation, threadLocal)).apply {
         threadLocal.set(this)

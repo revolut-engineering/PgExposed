@@ -212,41 +212,13 @@ object SchemaUtils {
         }
     }
 
-
-    /**
-     * Creates table with name "busy" (if not present) and single column to be used as "synchronization" point. Table wont be dropped after execution.
-     *
-     * All code provided in _body_ closure will be executed only if there is no another code which running under "withDataBaseLock" at same time.
-     * That means that concurrent execution of long running tasks under "database lock" might lead to that only first of them will be really executed.
-     */
-    fun <T> Transaction.withDataBaseLock(body: () -> T) {
-        val buzyTable = object : Table("busy") {
-            val busy = bool("busy").uniqueIndex()
-        }
-        create(buzyTable)
-        val isBusy = buzyTable.selectAll().forUpdate().any()
-        if (!isBusy) {
-            buzyTable.insert { it[buzyTable.busy] = true }
-            try {
-                body()
-            } finally {
-                buzyTable.deleteAll()
-                connection.commit()
-            }
-        }
-    }
-
     fun drop(vararg tables: Table) {
         if (tables.isEmpty()) return
         val transaction = TransactionManager.current()
-        var tablesForDeletion = SchemaUtils
+        SchemaUtils
                 .sortTablesByReferences(tables.toList())
                 .reversed()
                 .filter { it in tables }
-        if (!currentDialect.supportsIfNotExists) {
-            tablesForDeletion = tablesForDeletion.filter { it.exists()}
-        }
-        tablesForDeletion
                 .flatMap { it.dropStatement() }
                 .forEach {
                     transaction.exec(it)

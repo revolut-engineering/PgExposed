@@ -84,6 +84,8 @@ object PostgresFunctionProvider {
         }
     }
 
-    interface MatchMode {
+    fun processForDefaultValue(e: Expression<*>) : String = when (e) {
+        is LiteralOp<*> -> e.toSQL(QueryBuilder(false))
+        else -> "(${e.toSQL(QueryBuilder(false))})"
     }
 }

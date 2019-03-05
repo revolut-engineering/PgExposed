@@ -8,11 +8,6 @@ import java.sql.PreparedStatement
 import java.sql.SQLException
 import java.util.*
 
-
-internal object DefaultValueMarker {
-    override fun toString(): String = "DEFAULT"
-}
-
 abstract class Statement<out T>(val type: StatementType, val targets: List<Table>) {
 
     abstract fun PreparedStatement.executeInternal(transaction: Transaction): T?
@@ -47,7 +42,7 @@ abstract class Statement<out T>(val type: StatementType, val targets: List<Table
         } catch (e: SQLException) {
             throw ExposedSQLException(e, contexts, transaction)
         }
-        contexts.forEachIndexed { i, context ->
+        contexts.forEachIndexed { _, context ->
             statement.fillParameters(context.args)
             // REVIEW
             if (contexts.size > 1 || isAlwaysBatch) statement.addBatch()
@@ -68,10 +63,6 @@ abstract class Statement<out T>(val type: StatementType, val targets: List<Table
     }
 }
 
-class StatementContext(val statement: Statement<*>, val args: Iterable<Pair<IColumnType, Any?>>) {
-    fun sql(transaction: Transaction) = statement.prepareSQL(transaction)
-}
-
 fun StatementContext.expandArgs(transaction: Transaction) : String {
     val sql = sql(transaction)
     val iterator = args.iterator()
@@ -81,7 +72,7 @@ fun StatementContext.expandArgs(transaction: Transaction) : String {
     return buildString {
         val quoteStack = Stack<Char>()
         var lastPos = 0
-        for (i in 0..sql.length - 1) {
+        for (i in 0 until sql.length) {
             val char = sql[i]
             if (char == '?') {
                 if (quoteStack.isEmpty()) {

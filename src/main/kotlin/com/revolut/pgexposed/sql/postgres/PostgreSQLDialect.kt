@@ -9,12 +9,11 @@ import java.util.HashMap
 class PostgreSQLDialect : DatabaseDialect {
 
     override val name = "postgresql"
-    override val dataTypeProvider = PostgresDataTypeProvider
     override val functionProvider = PostgresFunctionProvider
 
     /* Cached values */
     private var _allTableNames: List<String>? = null
-    val allTablesNames: List<String>
+    private val allTablesNames: List<String>
         get() {
             if (_allTableNames == null) {
                 _allTableNames = allTablesNames()
@@ -100,7 +99,7 @@ class PostgreSQLDialect : DatabaseDialect {
                 }
                 rs.close()
                 tableConstraint
-            }.forEach { it ->
+            }.forEach {
                 constraints.getOrPut(it.fromTable to it.fromColumn){arrayListOf()}.add(it)
             }
 
@@ -176,8 +175,6 @@ class PostgreSQLDialect : DatabaseDialect {
     private val supportsSelectForUpdate by lazy { TransactionManager.current().db.metadata.supportsSelectForUpdate() }
     override fun supportsSelectForUpdate() = supportsSelectForUpdate
 
-    override val supportsMultipleGeneratedKeys: Boolean = true
-
     override fun modifyColumn(column: Column<*>): String = buildString {
         val colName = TransactionManager.current().identity(column)
         append("ALTER COLUMN $colName TYPE ${column.columnType.sqlType()},")
@@ -188,8 +185,7 @@ class PostgreSQLDialect : DatabaseDialect {
             append("SET ")
         append("NOT NULL")
         column.dbDefaultValue?.let {
-            append(", ALTER COLUMN $colName SET DEFAULT ${PostgresDataTypeProvider.processForDefaultValue(it)}")
+            append(", ALTER COLUMN $colName SET DEFAULT ${PostgresFunctionProvider.processForDefaultValue(it)}")
         }
     }
-
 }

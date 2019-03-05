@@ -4,6 +4,7 @@ import com.revolut.pgexposed.sql.*
 import com.revolut.pgexposed.sql.tests.DatabaseTestsBase
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import com.revolut.pgexposed.sql.postgres.PostgreSQLDialect
+import com.revolut.pgexposed.sql.postgres.PostgresFunctionProvider
 import com.revolut.pgexposed.sql.postgres.currentDialect
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,6 +13,7 @@ import java.time.LocalDateTime
 import java.util.*
 import javax.sql.rowset.serial.SerialBlob
 
+@Suppress("unused", "LocalVariableName")
 class DDLTests : DatabaseTestsBase() {
     @Test fun tableExists01() {
         val TestTable = object : Table() {
@@ -147,7 +149,7 @@ class DDLTests : DatabaseTestsBase() {
     @Test fun unnamedTableWithQuotesSQL() {
         withTables(UnNamedTable) {
             assertEquals("CREATE TABLE IF NOT EXISTS unnamed (${"id".inProperCase()} " +
-                    "${currentDialect.dataTypeProvider.shortType()} PRIMARY KEY, ${"name".inProperCase()} VARCHAR(42) NOT NULL)", UnNamedTable.ddl)
+                    "INT PRIMARY KEY, ${"name".inProperCase()} VARCHAR(42) NOT NULL)", UnNamedTable.ddl)
         }
     }
 
@@ -173,15 +175,11 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(tables = *arrayOf(TestTable)) {
-            val shortAutoIncType = currentDialect.dataTypeProvider.shortAutoincType()
+            val shortAutoIncType = "SERIAL"
 
-            assertEquals("CREATE TABLE " + if (currentDialect.supportsIfNotExists) {
-                "IF NOT EXISTS "
-            } else {
-                ""
-            } + "${"different_column_types".inProperCase()} " +
+            assertEquals("CREATE TABLE IF NOT EXISTS " + "${"different_column_types".inProperCase()} " +
                     "(${"id".inProperCase()} $shortAutoIncType NOT NULL, ${"name".inProperCase()} VARCHAR(42) PRIMARY KEY, " +
-                    "${"age".inProperCase()} ${currentDialect.dataTypeProvider.shortType()} NULL)", TestTable.ddl)
+                    "${"age".inProperCase()} INT NULL)", TestTable.ddl)
         }
     }
 
@@ -193,12 +191,8 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(tables = *arrayOf(TestTable)) {
-            assertEquals("CREATE TABLE " + if (currentDialect.supportsIfNotExists) {
-                "IF NOT EXISTS "
-            } else {
-                ""
-            } + "${"with_different_column_types".inProperCase()} " +
-                    "(${"id".inProperCase()} ${currentDialect.dataTypeProvider.shortType()}, ${"name".inProperCase()} VARCHAR(42), ${"age".inProperCase()} ${db.dialect.dataTypeProvider.shortType()} NULL, " +
+            assertEquals("CREATE TABLE IF NOT EXISTS " + "${"with_different_column_types".inProperCase()} " +
+                    "(${"id".inProperCase()} INT, ${"name".inProperCase()} VARCHAR(42), ${"age".inProperCase()} INT NULL, " +
                     "CONSTRAINT pk_with_different_column_types PRIMARY KEY (${"id".inProperCase()}, ${"name".inProperCase()}))", TestTable.ddl)
         }
     }
@@ -222,24 +216,16 @@ class DDLTests : DatabaseTestsBase() {
             val t4 = date("t4").default(dtConstValue)
         }
 
-        fun Expression<*>.itOrNull() = when {
-            currentDialect.isAllowedAsColumnDefault(this)  ->
-                "DEFAULT ${currentDialect.dataTypeProvider.processForDefaultValue(this)} NOT NULL"
-            else -> "NULL"
-        }
+        fun Expression<*>.itOrNull() = "DEFAULT ${PostgresFunctionProvider.processForDefaultValue(this)} NOT NULL"
 
         withTables(TestTable) {
-            val dtType = currentDialect.dataTypeProvider.dateTimeType()
-            assertEquals("CREATE TABLE " + if (currentDialect.supportsIfNotExists) {
-                "IF NOT EXISTS "
-            } else {
-                ""
-            } +
+            val dtType = "TIMESTAMP"
+            assertEquals("CREATE TABLE " + "IF NOT EXISTS " +
                     "${"t".inProperCase()} (" +
-                    "${"id".inProperCase()} ${currentDialect.dataTypeProvider.shortAutoincType()} PRIMARY KEY, " +
+                    "${"id".inProperCase()} SERIAL PRIMARY KEY, " +
                     "${"s".inProperCase()} VARCHAR(100) DEFAULT 'test' NOT NULL, " +
                     "${"sn".inProperCase()} VARCHAR(100) DEFAULT 'testNullable' NULL, " +
-                    "${"l".inProperCase()} ${currentDialect.dataTypeProvider.longType()} DEFAULT 42 NOT NULL, " +
+                    "${"l".inProperCase()} BIGINT DEFAULT 42 NOT NULL, " +
                     "${"c".inProperCase()} CHAR DEFAULT 'X' NOT NULL, " +
                     "${"t1".inProperCase()} $dtType ${currentDT.itOrNull()}, " +
                     "${"t2".inProperCase()} $dtType ${nowExpression.itOrNull()}, " +
@@ -250,7 +236,7 @@ class DDLTests : DatabaseTestsBase() {
             val resultRow = TestTable.insert {  }
 
             val row1 = TestTable.select {
-                TestTable.id eq resultRow.resultedValues!![0][TestTable.id]
+                TestTable.id eq resultRow[TestTable.id]!!
             }.single()
 
             assertEquals("test", row1[TestTable.s])
@@ -264,7 +250,7 @@ class DDLTests : DatabaseTestsBase() {
                 it[TestTable.sn] = null
             }
 
-            val row2 = TestTable.select { TestTable.id eq resultSet.resultedValues!![0][TestTable.id] }.single()
+            TestTable.select { TestTable.id eq resultSet[TestTable.id]!! }.single()
         }
     }
 
@@ -370,11 +356,7 @@ class DDLTests : DatabaseTestsBase() {
 
         withTables(t) {
             val bytes = "Hello there!".toByteArray()
-            val blob = if (currentDialect.dataTypeProvider.blobAsStream) {
-                    SerialBlob(bytes)
-                } else connection.createBlob().apply {
-                    setBytes(1, bytes)
-                }
+            val blob = SerialBlob(bytes)
 
             val id = t.insert {
                 it[t.b] = blob
@@ -414,17 +396,17 @@ class DDLTests : DatabaseTestsBase() {
         withDb {
             SchemaUtils.createMissingTablesAndColumns(initialTable)
             assertEquals("ALTER TABLE ${tableName.inProperCase()} ADD ${"id".inProperCase()} ${t.id.columnType.sqlType()} PRIMARY KEY", t.id.ddl.first())
-            assertEquals(1, currentDialect.tableColumns(t)[t]!!.size)
+            assertEquals(1, currentDialect.tableColumns(t).getValue(t).size)
             SchemaUtils.createMissingTablesAndColumns(t)
-            assertEquals(2, currentDialect.tableColumns(t)[t]!!.size)
+            assertEquals(2, currentDialect.tableColumns(t).getValue(t).size)
             SchemaUtils.drop(t)
         }
 
         withTables(tables = *arrayOf(initialTable)) {
             assertEquals("ALTER TABLE ${tableName.inProperCase()} ADD ${"id".inProperCase()} ${t.id.columnType.sqlType()} PRIMARY KEY", t.id.ddl)
-            assertEquals(1, currentDialect.tableColumns(t)[t]!!.size)
+            assertEquals(1, currentDialect.tableColumns(t).getValue(t).size)
             SchemaUtils.createMissingTablesAndColumns(t)
-            assertEquals(2, currentDialect.tableColumns(t)[t]!!.size)
+            assertEquals(2, currentDialect.tableColumns(t).getValue(t).size)
         }
     }
 
@@ -488,11 +470,11 @@ class DDLTests : DatabaseTestsBase() {
         withTables(Table1, Table2) {
             val resultSet = Table2.insert{}
             val resultSet2 = Table1.insert {
-                it[Table1.table2] = resultSet.resultedValues!![0][Table2.id]
+                it[Table1.table2] = resultSet[Table2.id]!!
             }
 
             Table2.insert {
-                it[Table2.table1] = resultSet2.resultedValues!![0][Table1.id]
+                it[Table2.table1] = resultSet2[Table1.id]!!
             }
 
             assertEquals(1, Table1.selectAll().count())
@@ -596,7 +578,7 @@ class DDLTests : DatabaseTestsBase() {
     }
 }
 
-private fun String.inProperCase(): String = TransactionManager.currentOrNull()?.let { tm ->
+private fun String.inProperCase(): String = TransactionManager.currentOrNull()?.let {
     (currentDialect as? PostgreSQLDialect)?.run {
         this@inProperCase.inProperCase
     }

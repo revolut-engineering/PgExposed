@@ -1,6 +1,5 @@
 package com.revolut.pgexposed.sql
 
-import com.revolut.pgexposed.sql.postgres.currentDialect
 import java.time.LocalDateTime
 
 abstract class Op<T> : Expression<T>() {
@@ -9,10 +8,10 @@ abstract class Op<T> : Expression<T>() {
     }
 
     object TRUE : Op<Boolean>() {
-        override fun toSQL(queryBuilder: QueryBuilder) = currentDialect.dataTypeProvider.booleanToStatementString(true)
+        override fun toSQL(queryBuilder: QueryBuilder) = true.toString()
     }
     object FALSE : Op<Boolean>() {
-        override fun toSQL(queryBuilder: QueryBuilder) = currentDialect.dataTypeProvider.booleanToStatementString(false)
+        override fun toSQL(queryBuilder: QueryBuilder) = false.toString()
     }
 }
 

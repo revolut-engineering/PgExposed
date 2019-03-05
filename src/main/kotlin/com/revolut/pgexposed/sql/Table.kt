@@ -190,8 +190,6 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
         return this
     }
 
-    private fun IColumnType.cloneAsBaseType() : IColumnType = ((this as? AutoIncColumnType)?.delegate ?: this).clone()
-
     private fun <T:Any> T.clone(replaceArgs: Map<KProperty1<T,*>, Any> = emptyMap()) = javaClass.kotlin.run {
         val consParams = primaryConstructor!!.parameters
         val allParams = memberProperties
@@ -447,7 +445,7 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
 
         val createTableDDL = buildString {
             append("CREATE TABLE ")
-            if (currentDialect.supportsIfNotExists) {
+            if (true) {
                 append("IF NOT EXISTS ")
             }
             append(TransactionManager.current().identity(this@Table))
@@ -504,7 +502,7 @@ open class Table(name: String = ""): ColumnSet(), DdlAware {
     override fun dropStatement() : List<String> {
         val dropTableDDL = buildString {
             append("DROP TABLE ")
-            if (currentDialect.supportsIfNotExists) {
+            if (true) {
                 append("IF EXISTS ")
             }
             append(TransactionManager.current().identity(this@Table))

@@ -11,7 +11,6 @@ data class ColumnMetadata(val name: String, val type: Int, val nullable: Boolean
 
 interface DatabaseDialect {
     val name: String
-    val dataTypeProvider: PostgresDataTypeProvider
     val functionProvider: PostgresFunctionProvider
 
     fun getDatabase(): String
@@ -34,19 +33,11 @@ interface DatabaseDialect {
 
     fun tableExists(table: Table): Boolean
 
-    fun checkTableMapping(table: Table) = true
-
     fun resetCaches()
 
     fun supportsSelectForUpdate(): Boolean
-    val supportsMultipleGeneratedKeys: Boolean
 
-    fun isAllowedAsColumnDefault(e: Expression<*>) = true
-
-    // --> REVIEW
-    val supportsIfNotExists: Boolean get() = true
     val needsSequenceToAutoInc: Boolean get() = false
-    val needsQuotesWhenSymbolsInNames: Boolean get() = true
     val identifierLengthLimit: Int get() = 100
     fun catalog(transaction: Transaction): String = transaction.connection.catalog
     // <-- REVIEW

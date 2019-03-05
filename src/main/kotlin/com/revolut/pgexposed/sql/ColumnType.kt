@@ -63,8 +63,8 @@ class AutoIncColumnType(val delegate: ColumnType, private val _autoincSeq: Strin
     val autoincSeq : String? get() = if (currentDialect.needsSequenceToAutoInc) _autoincSeq else null
 
     private fun resolveAutIncType(columnType: IColumnType) : String = when (columnType) {
-        is IntegerColumnType -> currentDialect.dataTypeProvider.shortAutoincType()
-        is LongColumnType -> currentDialect.dataTypeProvider.longAutoincType()
+        is IntegerColumnType -> "SERIAL"
+        is LongColumnType -> "BIGSERIAL"
         else -> error("Unsupported type $delegate for auto-increment")
     }
 
@@ -91,7 +91,7 @@ class CharacterColumnType : ColumnType() {
 }
 
 class IntegerColumnType : ColumnType() {
-    override fun sqlType(): String = currentDialect.dataTypeProvider.shortType()
+    override fun sqlType(): String = "INT"
 
     override fun valueFromDB(value: Any): Any = when(value) {
         is Int -> value
@@ -101,7 +101,7 @@ class IntegerColumnType : ColumnType() {
 }
 
 class LongColumnType : ColumnType() {
-    override fun sqlType(): String = currentDialect.dataTypeProvider.longType()
+    override fun sqlType(): String = "BIGINT"
 
     override fun valueFromDB(value: Any): Any = when(value) {
         is Long -> value
@@ -111,7 +111,7 @@ class LongColumnType : ColumnType() {
 }
 
 class FloatColumnType: ColumnType() {
-    override fun sqlType(): String  = currentDialect.dataTypeProvider.floatType()
+    override fun sqlType(): String  = "FLOAT"
 
     override fun valueFromDB(value: Any): Any {
         val valueFromDB = super.valueFromDB(value)
@@ -123,7 +123,7 @@ class FloatColumnType: ColumnType() {
 }
 
 class DoubleColumnType: ColumnType() {
-    override fun sqlType(): String  = currentDialect.dataTypeProvider.doubleType()
+    override fun sqlType(): String  = "DOUBLE PRECISION"
 
     override fun valueFromDB(value: Any): Any {
         val valueFromDB = super.valueFromDB(value)
@@ -151,7 +151,7 @@ class DecimalColumnType(val precision: Int, val scale: Int): ColumnType() {
 }
 
 class EnumerationColumnType<T:Enum<T>>(val klass: KClass<T>): ColumnType() {
-    override fun sqlType(): String  = currentDialect.dataTypeProvider.shortType()
+    override fun sqlType(): String  = "INT"
 
     override fun notNullValueToDB(value: Any): Any = when(value) {
         is Int -> value
@@ -184,7 +184,7 @@ private val DEFAULT_DATE_STRING_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM
 private val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss.SSSSSS").withLocale(Locale.ROOT)
 
 class DateColumnType(val time: Boolean): ColumnType() {
-    override fun sqlType(): String  = if (time) currentDialect.dataTypeProvider.dateTimeType() else "DATE"
+    override fun sqlType(): String  = if (time) "TIMESTAMP" else "DATE"
 
     override fun nonNullValueToString(value: Any): String {
         if (value is String) return value
@@ -253,7 +253,7 @@ open class VarCharColumnType(val colLength: Int = 255, collate: String? = null) 
 
 open class TextColumnType(collate: String? = null) : StringColumnType(collate) {
     override fun sqlType(): String = buildString {
-        append(currentDialect.dataTypeProvider.textType())
+        append("TEXT")
 
         if (collate != null) {
             append(" COLLATE $collate")
@@ -262,7 +262,7 @@ open class TextColumnType(collate: String? = null) : StringColumnType(collate) {
 }
 
 class BinaryColumnType(val length: Int) : ColumnType() {
-    override fun sqlType(): String  = currentDialect.dataTypeProvider.binaryType(length)
+    override fun sqlType(): String  = "bytea"
 
     // REVIEW
     override fun valueFromDB(value: Any): Any {
@@ -274,15 +274,12 @@ class BinaryColumnType(val length: Int) : ColumnType() {
 }
 
 class BlobColumnType : ColumnType() {
-    override fun sqlType(): String  = currentDialect.dataTypeProvider.blobType()
+    override fun sqlType(): String  = "bytea"
 
     override fun nonNullValueToString(value: Any): String = "?"
 
     override fun readObject(rs: ResultSet, index: Int): Any? {
-        return if (currentDialect.dataTypeProvider.blobAsStream)
-            rs.getBytes(index)?.let { SerialBlob(it) }         
-        else
-            rs.getBlob(index)
+        return rs.getBytes(index)?.let { SerialBlob(it) }
     }
 
     override fun valueFromDB(value: Any): Any = when (value) {
@@ -293,38 +290,34 @@ class BlobColumnType : ColumnType() {
     }
 
     override fun setParameter(stmt: PreparedStatement, index: Int, value: Any?) {
-        when {
-            currentDialect.dataTypeProvider.blobAsStream && value is InputStream ->
-                stmt.setBinaryStream(index, value, value.available())
-            value == null -> stmt.setNull(index, Types.LONGVARBINARY)
+        when (value) {
+            is InputStream -> stmt.setBinaryStream(index, value, value.available())
+            null -> stmt.setNull(index, Types.LONGVARBINARY)
             else -> super.setParameter(stmt, index, value)
         }
     }
 
     override fun notNullValueToDB(value: Any): Any {
-        return if (currentDialect.dataTypeProvider.blobAsStream)
-            (value as? Blob)?.binaryStream ?: value
-        else
-            value
+        return (value as? Blob)?.binaryStream ?: value
     }
 }
 
 class BooleanColumnType : ColumnType() {
-    override fun sqlType(): String  = currentDialect.dataTypeProvider.booleanType()
+    override fun sqlType(): String  = "BOOLEAN"
 
     override fun valueFromDB(value: Any) = when (value) {
         is Number -> value.toLong() != 0L
-        is String -> currentDialect.dataTypeProvider.booleanFromStringToBoolean(value)
+        is String -> value.toBoolean()
         else -> value.toString().toBoolean()
     }
 
-    override fun nonNullValueToString(value: Any) = currentDialect.dataTypeProvider.booleanToStatementString(value as Boolean)
+    override fun nonNullValueToString(value: Any) = (value as Boolean).toString()
 }
 
 class UUIDColumnType : ColumnType() {
-    override fun sqlType(): String = currentDialect.dataTypeProvider.uuidType()
+    override fun sqlType(): String = "uuid"
 
-    override fun notNullValueToDB(value: Any): Any = currentDialect.dataTypeProvider.uuidToDB(valueToUUID(value))
+    override fun notNullValueToDB(value: Any): Any = valueToUUID(value)
 
     private fun valueToUUID(value: Any): UUID = when (value) {
         is UUID -> value

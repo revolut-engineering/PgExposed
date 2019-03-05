@@ -7,14 +7,9 @@ import com.revolut.pgexposed.sql.isAutoInc
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import java.util.*
 
-internal class BatchDataInconsistentException(message : String) : Exception(message)
-
 open class BatchInsertStatement(table: Table, ignore: Boolean = false): InsertStatement<List<ResultRow>>(table, ignore) {
 
     override val isAlwaysBatch = true
-
-    override val generatedKey: List<ResultRow>?
-        get() = resultedValues
 
     protected val data = ArrayList<MutableMap<Column<*>, Any?>>()
 

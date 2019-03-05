@@ -11,6 +11,8 @@ import com.revolut.pgexposed.sql.Random
 import com.revolut.pgexposed.sql.postgres.DatabaseDialect
 import com.revolut.pgexposed.sql.postgres.PostgreSQLDialect
 import com.revolut.pgexposed.sql.tests.DatabaseTestsBase
+import com.revolut.pgexposed.sql.tests.shared.DMLTestsData.sampleBigDecimalValue
+import com.revolut.pgexposed.sql.tests.shared.DMLTestsData.stPetersburg
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -70,17 +72,21 @@ object DMLTestsData {
 
         val char = char("char").nullable()
     }
+
+    const val stPetersburg = "St. Petersburg"
+    val sampleBigDecimalValue = BigDecimal("239.42")
 }
 
+@Suppress("unused", "LocalVariableName")
 class DMLTests : DatabaseTestsBase() {
-    fun withCitiesAndUsers(statement: Transaction.(cities: DMLTestsData.Cities, users: DMLTestsData.Users, userData: DMLTestsData.UserData) -> Unit) {
+    private fun withCitiesAndUsers(statement: Transaction.(cities: DMLTestsData.Cities, users: DMLTestsData.Users, userData: DMLTestsData.UserData) -> Unit) {
         val Users = DMLTestsData.Users
         val Cities = DMLTestsData.Cities
         val UserData = DMLTestsData.UserData
 
         withTables(Cities, Users, UserData) {
             val saintPetersburgId = Cities.insert {
-                it[name] = "St. Petersburg"
+                it[name] = stPetersburg
             } get Cities.id
 
             val munichId = Cities.insert {
@@ -151,7 +157,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testUpdate01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val alexId = "alex"
             val alexName = users.slice(users.name).select { users.id.eq(alexId) }.first()[users.name]
             assertEquals("Alex", alexName)
@@ -168,7 +174,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testPreparedStatement() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val name = users.select { users.id eq "eugene" }.first()[users.name]
             assertEquals("Eugene", name)
         }
@@ -176,16 +182,18 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testDelete01() {
-        withCitiesAndUsers { cities, users, userData ->
+        val pattern = "%thing"
+
+        withCitiesAndUsers { _, users, userData ->
             userData.deleteAll()
             val userDataExists = userData.selectAll().any()
             assertEquals(false, userDataExists)
 
-            val smthId = users.slice(users.id).select { users.name.like("%thing") }.single()[users.id]
+            val smthId = users.slice(users.id).select { users.name.like(pattern) }.single()[users.id]
             assertEquals("smth", smthId)
 
-            users.deleteWhere { users.name like "%thing" }
-            val hasSmth = users.slice(users.id).select { users.name.like("%thing") }.any()
+            users.deleteWhere { users.name like pattern }
+            val hasSmth = users.slice(users.id).select { users.name.like(pattern) }.any()
             assertEquals(false, hasSmth)
         }
     }
@@ -193,7 +201,7 @@ class DMLTests : DatabaseTestsBase() {
     // select expressions
     @Test
     fun testSelect() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             users.select { users.id.eq("andrey") }.forEach {
                 val userId = it[users.id]
                 val userName = it[users.name]
@@ -207,7 +215,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSelectAnd() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             users.select { users.id.eq("andrey") and users.name.eq("Andrey") }.forEach {
                 val userId = it[users.id]
                 val userName = it[users.name]
@@ -221,7 +229,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSelectOr() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             users.select { users.id.eq("andrey") or users.name.eq("Andrey") }.forEach {
                 val userId = it[users.id]
                 val userName = it[users.name]
@@ -235,10 +243,9 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSelectNot() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             users.select { com.revolut.pgexposed.sql.not(users.id.eq("andrey")) }.forEach {
                 val userId = it[users.id]
-                val userName = it[users.name]
                 if (userId == "andrey") {
                     error("Unexpected user $userId")
                 }
@@ -249,12 +256,12 @@ class DMLTests : DatabaseTestsBase() {
     // manual join
     @Test
     fun testJoin01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             (users innerJoin cities).slice(users.name, cities.name).select { (users.id.eq("andrey") or users.name.eq("Sergey")) and users.cityId.eq(cities.id) }.forEach {
                 val userName = it[users.name]
                 val cityName = it[cities.name]
                 when (userName) {
-                    "Andrey" -> assertEquals("St. Petersburg", cityName)
+                    "Andrey" -> assertEquals(stPetersburg, cityName)
                     "Sergey" -> assertEquals("Munich", cityName)
                     else -> error("Unexpected user $userName")
                 }
@@ -265,10 +272,10 @@ class DMLTests : DatabaseTestsBase() {
     // join with foreign key
     @Test
     fun testJoin02() {
-        withCitiesAndUsers { cities, users, userData ->
-            val stPetersburgUser = (users innerJoin cities).slice(users.name, users.cityId, cities.name).select { cities.name.eq("St. Petersburg") or users.cityId.isNull() }.single()
+        withCitiesAndUsers { cities, users, _ ->
+            val stPetersburgUser = (users innerJoin cities).slice(users.name, users.cityId, cities.name).select { cities.name.eq(stPetersburg) or users.cityId.isNull() }.single()
             assertEquals("Andrey", stPetersburgUser[users.name])
-            assertEquals("St. Petersburg", stPetersburgUser[cities.name])
+            assertEquals(stPetersburg, stPetersburgUser[cities.name])
         }
     }
 
@@ -324,7 +331,7 @@ class DMLTests : DatabaseTestsBase() {
     @Test
     fun testJoin05() {
         withCitiesAndUsers { cities, users, _ ->
-            val allUsersToStPetersburg = (users crossJoin cities).slice(users.name, users.cityId, cities.name).select { cities.name.eq("St. Petersburg") }.map {
+            val allUsersToStPetersburg = (users crossJoin cities).slice(users.name, users.cityId, cities.name).select { cities.name.eq(stPetersburg) }.map {
                 it[users.name] to it[cities.name]
             }
             val allUsers = setOf(
@@ -334,7 +341,7 @@ class DMLTests : DatabaseTestsBase() {
                 "Alex",
                 "Something"
             )
-            assertTrue(allUsersToStPetersburg.all { it.second == "St. Petersburg" })
+            assertTrue(allUsersToStPetersburg.all { it.second == stPetersburg })
             assertEquals(allUsers, allUsersToStPetersburg.map { it.first }.toSet())
         }
     }
@@ -356,7 +363,7 @@ class DMLTests : DatabaseTestsBase() {
             }
 
             bar.insert {
-                it[bar.foo] = resultSet.resultedValues!![0][foo.id]
+                it[bar.foo] = resultSet[foo.id]!!
                 it[baz] = 5
             }
 
@@ -384,8 +391,8 @@ class DMLTests : DatabaseTestsBase() {
                 }
 
                 bar.insert {
-                    it[bar.foo] = resultSet.resultedValues!![0][foo.id]
-                    it[bar.foo2] = resultSet.resultedValues!![0][foo.id]
+                    it[bar.foo] = resultSet[foo.id]!!
+                    it[bar.foo2] = resultSet[foo.id]!!
                     it[baz] = 5
                 }
 
@@ -397,7 +404,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val cAlias = users.id.count().alias("c")
             ((cities innerJoin users).slice(cities.name, users.id.count(), cAlias).selectAll().groupBy(cities.name)).forEach {
                 val cityName = it[cities.name]
@@ -407,7 +414,7 @@ class DMLTests : DatabaseTestsBase() {
                 when (cityName) {
                     "Munich" -> assertEquals(2, userCount)
                     "Prague" -> assertEquals(0, userCount)
-                    "St. Petersburg" -> assertEquals(1, userCount)
+                    stPetersburg -> assertEquals(1, userCount)
                     else -> error("Unknow city $cityName")
                 }
             }
@@ -416,10 +423,10 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy02() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val r = (cities innerJoin users).slice(cities.name, users.id.count()).selectAll().groupBy(cities.name).having { users.id.count() eq 1 }.toList()
             assertEquals(1, r.size)
-            assertEquals("St. Petersburg", r[0][cities.name])
+            assertEquals(stPetersburg, r[0][cities.name])
             val count = r[0][users.id.count()]
             assertEquals(1, count)
         }
@@ -427,7 +434,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy03() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val maxExpr = cities.id.max()
             val r = (cities innerJoin users).slice(cities.name, users.id.count(), maxExpr).selectAll()
                     .groupBy(cities.name)
@@ -444,7 +451,7 @@ class DMLTests : DatabaseTestsBase() {
                 assertEquals(2, max)
             }
             1.let {
-                assertEquals("St. Petersburg", r[it][cities.name])
+                assertEquals(stPetersburg, r[it][cities.name])
                 val count = r[it][users.id.count()]
                 assertEquals(1, count)
                 val max = r[it][maxExpr]
@@ -455,7 +462,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy04() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val r = (cities innerJoin users).slice(cities.name, users.id.count(), cities.id.max()).selectAll()
                 .groupBy(cities.name)
                 .having { users.id.count() lessEq 42 }
@@ -469,7 +476,7 @@ class DMLTests : DatabaseTestsBase() {
                 assertEquals(2, count)
             }
             1.let {
-                assertEquals("St. Petersburg", r[it][cities.name])
+                assertEquals(stPetersburg, r[it][cities.name])
                 val count = r[it][users.id.count()]
                 assertEquals(1, count)
             }
@@ -478,7 +485,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy05() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val maxNullableCityId = users.cityId.max()
 
             users.slice(maxNullableCityId).selectAll()
@@ -497,7 +504,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy06() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, _, _ ->
             val maxNullableId = cities.id.max()
 
             cities.slice(maxNullableId).selectAll()
@@ -516,7 +523,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testGroupBy07() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, _, _ ->
             val avgIdExpr = cities.id.avg()
             val avgId = BigDecimal.valueOf(cities.selectAll().map { it[cities.id] }.average())
 
@@ -553,7 +560,7 @@ class DMLTests : DatabaseTestsBase() {
 
             users.name.groupConcat(separator = ", ").checkExcept {
                 assertEquals(3, it.size)
-                assertEquals("Andrey", it["St. Petersburg"])
+                assertEquals("Andrey", it[stPetersburg])
                 val sorted = "Sergey, Eugene"
                 assertEquals(sorted, it["Munich"])
                 assertNull(it["Prague"])
@@ -561,7 +568,7 @@ class DMLTests : DatabaseTestsBase() {
 
             users.name.groupConcat(separator = " | ", distinct = true).checkExcept(PostgreSQLDialect::class) {
                 assertEquals(3, it.size)
-                assertEquals("Andrey", it["St. Petersburg"])
+                assertEquals("Andrey", it[stPetersburg])
                 val sorted = "Sergey | Eugene"
                 assertEquals(sorted, it["Munich"])
                 assertNull(it["Prague"])
@@ -569,14 +576,14 @@ class DMLTests : DatabaseTestsBase() {
 
             users.name.groupConcat(separator = " | ", orderBy = users.name to SortOrder.ASC).checkExcept(PostgreSQLDialect::class) {
                 assertEquals(3, it.size)
-                assertEquals("Andrey", it["St. Petersburg"])
+                assertEquals("Andrey", it[stPetersburg])
                 assertEquals("Eugene | Sergey", it["Munich"])
                 assertNull(it["Prague"])
             }
 
             users.name.groupConcat(separator = " | ", orderBy = users.name to SortOrder.DESC).checkExcept(PostgreSQLDialect::class) {
                 assertEquals(3, it.size)
-                assertEquals("Andrey", it["St. Petersburg"])
+                assertEquals("Andrey", it[stPetersburg])
                 assertEquals("Sergey | Eugene", it["Munich"])
                 assertNull(it["Prague"])
             }
@@ -585,7 +592,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun orderBy01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val r = users.selectAll().orderBy(users.id).toList()
             assertEquals(5, r.size)
             assertEquals("alex", r[0][users.id])
@@ -612,7 +619,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun orderBy03() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val r = users.selectAll().orderBy(users.cityId to SortOrder.DESC, users.id to SortOrder.ASC).toList()
             assertEquals(5, r.size)
             val usersWithoutCities = listOf("alex", "smth")
@@ -626,19 +633,19 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testOrderBy04() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val r = (cities innerJoin users).slice(cities.name, users.id.count()).selectAll().groupBy(cities.name).orderBy(cities.name).toList()
             assertEquals(2, r.size)
             assertEquals("Munich", r[0][cities.name])
             assertEquals(2, r[0][users.id.count()])
-            assertEquals("St. Petersburg", r[1][cities.name])
+            assertEquals(stPetersburg, r[1][cities.name])
             assertEquals(1, r[1][users.id.count()])
         }
     }
 
     @Test
     fun orderBy05() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val r = users.selectAll().orderBy(users.cityId to SortOrder.DESC, users.id to SortOrder.ASC).toList()
             assertEquals(5, r.size)
             val usersWithoutCities = listOf("alex", "smth")
@@ -652,7 +659,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun orderBy06() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val orderByExpression = users.id.substring(2, 1)
             val r = users.selectAll().orderBy(orderByExpression to SortOrder.ASC).toList()
             assertEquals(5, r.size)
@@ -666,7 +673,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSizedIterable() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, _, _ ->
             assertEquals(false, cities.selectAll().empty())
             assertEquals(true, cities.select { cities.name eq "Qwertt" }.empty())
             assertEquals(0, cities.select { cities.name eq "Qwertt" }.count())
@@ -676,7 +683,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testExists01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, userData ->
             val r = users.select { exists(userData.select((userData.user_id eq users.id) and (userData.comment like "%here%"))) }.toList()
             assertEquals(1, r.size)
             assertEquals("Something", r[0][users.name])
@@ -685,7 +692,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testExists02() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, userData ->
             val r = users.select { exists(userData.select((userData.user_id eq users.id) and ((userData.comment like "%here%") or (userData.comment like "%Sergey")))) }
                 .orderBy(users.id).toList()
             assertEquals(2, r.size)
@@ -696,7 +703,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testExists03() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, userData ->
             val r = users.select {
                 exists(userData.select((userData.user_id eq users.id) and (userData.comment like "%here%"))) or
                     exists(userData.select((userData.user_id eq users.id) and (userData.comment like "%Sergey")))
@@ -710,7 +717,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInList01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val r = users.select { users.id inList listOf("andrey", "alex") }.orderBy(users.name).toList()
 
             assertEquals(2, r.size)
@@ -721,7 +728,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInList02() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, _, _ ->
             val cityIds = cities.selectAll().map { it[cities.id] }.take(2)
             val r = cities.select { cities.id inList cityIds }
 
@@ -731,7 +738,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testCalc01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, _, _ ->
             val r = cities.slice(cities.id.sum()).selectAll().toList()
             assertEquals(1, r.size)
             assertEquals(6, r[0][cities.id.sum()])
@@ -776,7 +783,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSubstring01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val substring = users.name.substring(1, 2)
             val r = (users).slice(users.id, substring)
                 .selectAll().orderBy(users.id).toList()
@@ -807,7 +814,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertSelect01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val substring = users.name.substring(1, 2)
             cities.insert(users.slice(substring).selectAll().orderBy(users.id).limit(2))
 
@@ -820,7 +827,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertSelect02() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, _, userData ->
             val allUserData = userData.selectAll().count()
             userData.insert(userData.slice(userData.user_id, userData.comment, intParam(42)).selectAll())
 
@@ -831,7 +838,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertSelect03() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val userCount = users.selectAll().count()
             users.insert(users.slice(Random().castTo<String>(VarCharColumnType()).substring(1, 10), stringParam("Foo"), intParam(1)).selectAll())
             val r = users.select { users.name eq "Foo" }.toList()
@@ -841,7 +848,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testInsertSelect04() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val userCount = users.selectAll().count()
             users.insert(users.slice(stringParam("Foo"), Random().castTo<String>(VarCharColumnType()).substring(1, 10)).selectAll(), columns = listOf(users.name, users.id))
             val r = users.select { users.name eq "Foo" }.toList()
@@ -851,7 +858,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testSelectCase01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val field = Expression.build { case().When(users.id eq "alex", stringLiteral("11")).Else(stringLiteral("22")) }
             val r = users.slice(users.id, field).selectAll().orderBy(users.id).limit(2).toList()
             assertEquals(2, r.size)
@@ -898,13 +905,13 @@ class DMLTests : DatabaseTestsBase() {
                 it[e] = DMLTestsData.E.ONE
                 it[es] = DMLTestsData.E.ONE
                 it[s] = "test"
-                it[dc] = BigDecimal("239.42")
+                it[dc] = sampleBigDecimalValue
                 it[char] = '('
             }
 
             val row = tbl.selectAll().single()
             tbl.checkRow(row, 42, null, date, null, time, null, DMLTestsData.E.ONE, null, DMLTestsData.E.ONE,
-                    null, "test", null, BigDecimal("239.42"), null, null, null)
+                    null, "test", null, sampleBigDecimalValue, null, null, null)
             assertEquals('(', row[tbl.char])
         }
     }
@@ -929,14 +936,14 @@ class DMLTests : DatabaseTestsBase() {
                 it[esn] = null
                 it[s] = "test"
                 it[sn] = null
-                it[dc] = BigDecimal("239.42")
+                it[dc] = sampleBigDecimalValue
                 it[dcn] = null
                 it[fcn] = null
             }
 
             val row = tbl.selectAll().single()
             tbl.checkRow(row, 42, null, date, null, time, null, DMLTestsData.E.ONE, null, DMLTestsData.E.ONE,
-                    null, "test", null, BigDecimal("239.42"), null, null, null)
+                    null, "test", null, sampleBigDecimalValue, null, null, null)
         }
     }
 
@@ -960,15 +967,15 @@ class DMLTests : DatabaseTestsBase() {
                 it[esn] = DMLTestsData.E.ONE
                 it[s] = "test"
                 it[sn] = "test"
-                it[dc] = BigDecimal("239.42")
-                it[dcn] = BigDecimal("239.42")
+                it[dc] = sampleBigDecimalValue
+                it[dcn] = sampleBigDecimalValue
                 it[fcn] = 239.42f
                 it[dblcn] = 567.89
             }
 
             val row = tbl.selectAll().single()
             tbl.checkRow(row, 42, 42, date, date, time, time, DMLTestsData.E.ONE, DMLTestsData.E.ONE, DMLTestsData.E.ONE, DMLTestsData.E.ONE,
-                    "test", "test", BigDecimal("239.42"), BigDecimal("239.42"), 239.42f, 567.89)
+                    "test", "test", sampleBigDecimalValue, sampleBigDecimalValue, 239.42f, 567.89)
         }
     }
 
@@ -986,12 +993,12 @@ class DMLTests : DatabaseTestsBase() {
                 it[e] = DMLTestsData.E.ONE
                 it[es] = DMLTestsData.E.ONE
                 it[s] = stringThatNeedsEscaping
-                it[dc] = BigDecimal("239.42")
+                it[dc] = sampleBigDecimalValue
             }
 
             val row = tbl.selectAll().single()
             tbl.checkRow(row, 42, null, date, null, time, null, DMLTestsData.E.ONE, null, DMLTestsData.E.ONE, null, stringThatNeedsEscaping, null,
-                    BigDecimal("239.42"), null, null, null)
+                    sampleBigDecimalValue, null, null, null)
         }
     }
 
@@ -1152,7 +1159,7 @@ class DMLTests : DatabaseTestsBase() {
             val date = today
             val time = LocalDateTime.now()
             val sTest = "test"
-            val dec = BigDecimal("239.42")
+            val dec = sampleBigDecimalValue
             tbl.insert {
                 it[n] = 42
                 it[d] = date
@@ -1193,7 +1200,7 @@ class DMLTests : DatabaseTestsBase() {
             val time = LocalDateTime.now()
             val sTest = "test"
             val eOne = DMLTestsData.E.ONE
-            val dec = BigDecimal("239.42")
+            val dec = sampleBigDecimalValue
             tbl.insert {
                 it[n] = 42
                 it[nn] = 42
@@ -1238,7 +1245,7 @@ class DMLTests : DatabaseTestsBase() {
             val time = LocalDateTime.now()
             val eOne = DMLTestsData.E.ONE
             val sTest = "test"
-            val dec = BigDecimal("239.42")
+            val dec = sampleBigDecimalValue
             tbl.insert {
                 it[n] = 42
                 it[nn] = 42
@@ -1279,7 +1286,7 @@ class DMLTests : DatabaseTestsBase() {
         val date = today
         val time = LocalDateTime.now()
         val eOne = DMLTestsData.E.ONE
-        val dec = BigDecimal("239.42")
+        val dec = sampleBigDecimalValue
         withTables(tables = *arrayOf(tbl)) {
             tbl.insert {
                 it[n] = 101
@@ -1304,7 +1311,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testJoinWithAlias01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val usersAlias = users.alias("u2")
             val resultRow = Join(users).join(usersAlias, JoinType.LEFT, usersAlias[users.id], stringLiteral("smth"))
                 .select { users.id eq "alex" }.single()
@@ -1324,7 +1331,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testStringFunctions() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, _, _ ->
 
             val lcase = DMLTestsData.Cities.name.lowerCase()
             assert(cities.slice(lcase).selectAll().any { it[lcase] == "prague" })
@@ -1336,7 +1343,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testJoinSubQuery01() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val expAlias = users.name.max().alias("m")
             val usersAlias = users.slice(users.cityId, expAlias).selectAll().groupBy(users.cityId).alias("u2")
             val resultRows = Join(users).join(usersAlias, JoinType.INNER, usersAlias[expAlias], users.name).selectAll().toList()
@@ -1346,7 +1353,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testJoinSubQuery02() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { _, users, _ ->
             val expAlias = users.name.max().alias("m")
 
             val query = Join(users).joinQuery(on = { it[expAlias].eq(users.name) }) {
@@ -1362,7 +1369,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testJoinWithAdditionalConstraint() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val usersAlias = users.alias("name")
             val join = cities.join(usersAlias, JoinType.INNER, cities.id, usersAlias[users.cityId]) {
                 cities.id greater 1 and (cities.name.neq(usersAlias[users.name]))
@@ -1393,7 +1400,7 @@ class DMLTests : DatabaseTestsBase() {
                 it[foo.name] = "bar"
             }
             val result = foo.select {
-                foo.id eq resultSet.resultedValues!![0][foo.id]
+                foo.id eq resultSet[foo.id]!!
             }.single()
 
             assertEquals(today.toLocalDate(), result[foo.defaultDateTime].toLocalDate())
@@ -1418,17 +1425,17 @@ class DMLTests : DatabaseTestsBase() {
             }
 
             val result = foo.select {
-                foo.id eq resultSet.resultedValues!![0][foo.id]
+                foo.id eq resultSet[foo.id]!!
             }.single()
 
             assertEquals("bar", result[foo.name])
             assertEqualDateTime(nonDefaultDate, result[foo.defaultDateTime])
 
-            foo.update({foo.id eq resultSet.resultedValues!![0][foo.id]}) {
+            foo.update({foo.id eq resultSet[foo.id]!!}) {
                 it[foo.name] = "baz"
             }
 
-            val result2 = foo.select { foo.id eq resultSet.resultedValues!![0][foo.id] }.single()
+            val result2 = foo.select { foo.id eq resultSet[foo.id]!! }.single()
             assertEquals("baz", result2[foo.name])
             assertEqualDateTime(nonDefaultDate, result2[foo.defaultDateTime])
         }
@@ -1455,7 +1462,7 @@ class DMLTests : DatabaseTestsBase() {
             val userName = row[users.name]
             val cityName = row[cities.name]
             when (userName) {
-                "Andrey" -> assertEquals("St. Petersburg", cityName)
+                "Andrey" -> assertEquals(stPetersburg, cityName)
                 "Sergey" -> assertEquals("Munich", cityName)
                 else -> error("Unexpected user $userName")
             }
@@ -1569,7 +1576,7 @@ class DMLTests : DatabaseTestsBase() {
                 it[name] = "FOo"
             }
             OrgMemberships.insert {
-                it[orgId] = resultSet.resultedValues!![0][Orgs.id]
+                it[orgId] = resultSet[Orgs.id]!!
             }
 
             assertEquals(1, OrgMemberships.selectAll().count())
@@ -1578,7 +1585,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testCompoundOp() {
-        withCitiesAndUsers { cities, users, _ ->
+        withCitiesAndUsers { _, users, _ ->
             val allUsers = setOf(
                     "Andrey",
                     "Sergey",
@@ -1597,7 +1604,7 @@ class DMLTests : DatabaseTestsBase() {
 
     @Test
     fun testOrderByExpressions() {
-        withCitiesAndUsers { cities, users, userData ->
+        withCitiesAndUsers { cities, users, _ ->
             val expression = wrapAsExpression<Int>(users
                     .slice(users.id.count())
                     .select {
@@ -1627,11 +1634,13 @@ class DMLTests : DatabaseTestsBase() {
 
 private val today = LocalDateTime.now().toLocalDate().atStartOfDay()
 
+@Suppress("unused")
 object OrgMemberships : Table("org_membership") {
     val id = integer("id").autoIncrement().primaryKey()
     val orgId = (integer("orgId") references Orgs.id)
 }
 
+@Suppress("unused")
 object Orgs : Table("orgs") {
     val id = integer("id").autoIncrement().primaryKey()
     val uid = varchar("uid", 36).uniqueIndex().clientDefault { UUID.randomUUID().toString() }
