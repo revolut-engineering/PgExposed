@@ -1,9 +1,7 @@
-package com.revolut.pgexposed.sql.tests.shared
+package com.revolut.pgexposed.sql
 
-import com.revolut.pgexposed.sql.SchemaUtils
-import com.revolut.pgexposed.sql.Table
+import com.revolut.pgexposed.sql.tables.DMLTestsData
 import org.junit.Test
-import com.revolut.pgexposed.sql.tests.shared.SortByReferenceTest.TestTables.refereeTable.primaryKey
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -28,13 +26,13 @@ class SortByReferenceTest {
         object cities : Table() {
             val id = integer("id").autoIncrement().primaryKey()
             val name = varchar("name", 50)
-            val strange_id = varchar("strange_id", 10).references(strangeTable.id)
+            val strange_id = varchar("strange_id", 10).references(TestTables.strangeTable.id)
         }
 
         object users : Table() {
             val id = varchar("id", 10).primaryKey()
             val name = varchar("name", length = 50)
-            val cityId = (integer("city_id") references cities.id).nullable()
+            val cityId = (integer("city_id") references TestTables.cities.id).nullable()
         }
 
         object noRefereeTable : Table() {
@@ -44,7 +42,7 @@ class SortByReferenceTest {
 
         object refereeTable : Table() {
             val id = varchar("id", 10).primaryKey()
-            val ref = (varchar("ref", 10) references noRefereeTable.id)
+            val ref = (varchar("ref", 10) references TestTables.noRefereeTable.id)
         }
 
         object referencedTable : Table() {
@@ -54,7 +52,7 @@ class SortByReferenceTest {
 
         object strangeTable : Table() {
             val id = varchar("id", 10).primaryKey()
-            val user_id = varchar("user_id", 10) references users.id
+            val user_id = varchar("user_id", 10) references TestTables.users.id
             val comment = varchar("comment", 30)
             val value = integer("value")
         }

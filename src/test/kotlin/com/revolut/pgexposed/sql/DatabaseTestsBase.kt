@@ -1,8 +1,7 @@
-package com.revolut.pgexposed.sql.tests
+package com.revolut.pgexposed.sql
 
 import com.opentable.db.postgres.embedded.EmbeddedPostgres
-import com.revolut.pgexposed.sql.*
-import com.revolut.pgexposed.sql.tests.TestDB.POSTGRESQL
+import com.revolut.pgexposed.sql.TestDB.POSTGRESQL
 import com.revolut.pgexposed.sql.transactions.transaction
 import com.revolut.pgexposed.sql.postgres.currentDialect
 import java.util.*

@@ -1,11 +1,8 @@
-package com.revolut.pgexposed.sql.tests.shared
+package com.revolut.pgexposed.sql
 
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers
 import com.revolut.pgexposed.exceptions.ExposedSQLException
-import com.revolut.pgexposed.sql.Database
-import com.revolut.pgexposed.sql.tests.DatabaseTestsBase
-import com.revolut.pgexposed.sql.tests.TestDB
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import com.revolut.pgexposed.sql.transactions.transaction
 import org.junit.After
@@ -107,10 +104,10 @@ class ConnectionExceptions : DatabaseTestsBase() {
 
     @Test
     fun `transaction repetition works even if rollback throws exception`() {
-        `_transaction repetition works even if rollback throws exception`(::ExceptionOnRollbackConnection)
+        `_transaction repetition works even if rollback throws exception`(ConnectionExceptions::ExceptionOnRollbackConnection)
     }
     private fun `_transaction repetition works even if rollback throws exception`(connectionDecorator: (Connection) -> ConnectionSpy){
-        val wrappingDataSource = ConnectionExceptions.WrappingDataSource(TestDB.POSTGRESQL, connectionDecorator)
+        val wrappingDataSource = WrappingDataSource(TestDB.POSTGRESQL, connectionDecorator)
 
         val db = Database.connect(datasource = wrappingDataSource)
         try {
@@ -141,7 +138,7 @@ class ConnectionExceptions : DatabaseTestsBase() {
 
     @Test
     fun `transaction repetition works when commit throws exception`() {
-        `_transaction repetition works when commit throws exception`(::ExceptionOnCommitConnection)
+        `_transaction repetition works when commit throws exception`(ConnectionExceptions::ExceptionOnCommitConnection)
     }
     private fun `_transaction repetition works when commit throws exception`(connectionDecorator: (Connection) -> ConnectionSpy) {
         val wrappingDataSource = WrappingDataSource(TestDB.POSTGRESQL, connectionDecorator)
@@ -164,10 +161,10 @@ class ConnectionExceptions : DatabaseTestsBase() {
 
     @Test
     fun `transaction throws exception if all commits throws exception`(){
-        `_transaction throws exception if all commits throws exception`(::ExceptionOnCommitConnection)
+        `_transaction throws exception if all commits throws exception`(ConnectionExceptions::ExceptionOnCommitConnection)
     }
     private fun `_transaction throws exception if all commits throws exception`(connectionDecorator: (Connection) -> ConnectionSpy){
-        val wrappingDataSource = ConnectionExceptions.WrappingDataSource(TestDB.POSTGRESQL, connectionDecorator)
+        val wrappingDataSource = WrappingDataSource(TestDB.POSTGRESQL, connectionDecorator)
         val db = Database.connect(datasource = wrappingDataSource)
         try {
             withDb {
@@ -196,12 +193,12 @@ class ConnectionExceptions : DatabaseTestsBase() {
 
     @Test
     fun `transaction repetition works even if rollback and close throws exception`(){
-        `_transaction repetition works even if rollback throws exception`(::ExceptionOnRollbackCloseConnection)
+        `_transaction repetition works even if rollback throws exception`(ConnectionExceptions::ExceptionOnRollbackCloseConnection)
     }
 
     @Test
     fun `transaction repetition works when commit and close throws exception`(){
-        `_transaction repetition works when commit throws exception`(::ExceptionOnCommitConnection)
+        `_transaction repetition works when commit throws exception`(ConnectionExceptions::ExceptionOnCommitConnection)
     }
 
     private class ExceptionOnCommitCloseConnection(connection: Connection) : ConnectionSpy(connection) {
@@ -218,7 +215,7 @@ class ConnectionExceptions : DatabaseTestsBase() {
 
     @Test
     fun `transaction throws exception if all commits and close throws exception`(){
-        `_transaction throws exception if all commits throws exception`(::ExceptionOnCommitCloseConnection)
+        `_transaction throws exception if all commits throws exception`(ConnectionExceptions::ExceptionOnCommitCloseConnection)
     }
 
     @After

@@ -1,4 +1,4 @@
-package com.revolut.pgexposed.sql.tests.shared
+package com.revolut.pgexposed.sql
 
 import com.revolut.pgexposed.sql.Transaction
 import com.revolut.pgexposed.sql.postgres.currentDialect

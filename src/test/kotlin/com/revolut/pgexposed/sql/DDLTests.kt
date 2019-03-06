@@ -1,11 +1,10 @@
-package com.revolut.pgexposed.sql.tests.shared
+package com.revolut.pgexposed.sql
 
-import com.revolut.pgexposed.sql.*
-import com.revolut.pgexposed.sql.tests.DatabaseTestsBase
 import com.revolut.pgexposed.sql.transactions.TransactionManager
 import com.revolut.pgexposed.sql.postgres.PostgreSQLDialect
 import com.revolut.pgexposed.sql.postgres.PostgresFunctionProvider
 import com.revolut.pgexposed.sql.postgres.currentDialect
+import com.revolut.pgexposed.sql.tables.DMLTestsData
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -46,7 +45,7 @@ class DDLTests : DatabaseTestsBase() {
         withTables(KeyWordTable) {
             assertEquals(true, KeyWordTable.exists())
             KeyWordTable.insert {
-                it[KeyWordTable.bool] = true
+                it[bool] = true
             }
         }
     }
@@ -470,18 +469,18 @@ class DDLTests : DatabaseTestsBase() {
         withTables(Table1, Table2) {
             val resultSet = Table2.insert{}
             val resultSet2 = Table1.insert {
-                it[Table1.table2] = resultSet[Table2.id]!!
+                it[table2] = resultSet[Table2.id]!!
             }
 
             Table2.insert {
-                it[Table2.table1] = resultSet2[Table1.id]!!
+                it[table1] = resultSet2[Table1.id]!!
             }
 
             assertEquals(1, Table1.selectAll().count())
             assertEquals(2, Table2.selectAll().count())
 
             Table2.update {
-                it[Table2.table1] = null
+                it[table1] = null
             }
 
             Table1.deleteAll()
