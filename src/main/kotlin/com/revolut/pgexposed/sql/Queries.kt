@@ -1,9 +1,8 @@
 package com.revolut.pgexposed.sql
 
+import com.revolut.pgexposed.sql.postgres.currentDialect
 import com.revolut.pgexposed.sql.statements.*
 import com.revolut.pgexposed.sql.transactions.TransactionManager
-import com.revolut.pgexposed.sql.postgres.currentDialect
-import com.revolut.pgexposed.sql.postgres.inProperCase
 import java.util.*
 
 /**
@@ -152,17 +151,13 @@ private fun checkMissingIndices(vararg tables: Table): List<Index> {
         }
     }
 
-    val tr = TransactionManager.current()
-    val fKeyConstraints = currentDialect.columnConstraints(*tables).keys
     val existingIndices = currentDialect.existingIndices(*tables)
-    fun List<Index>.filterFKeys() = filterNot { (it.table.tableName.inProperCase() to it.columns.singleOrNull()?.let { c -> tr.identity(c) }) in fKeyConstraints }
-
     val missingIndices = HashSet<Index>()
     val notMappedIndices = HashMap<String, MutableSet<Index>>()
     val nameDiffers = HashSet<Index>()
     for (table in tables) {
-        val existingTableIndices = existingIndices[table].orEmpty().filterFKeys()
-        val mappedIndices = table.indices.filterFKeys()
+        val existingTableIndices = existingIndices[table].orEmpty()
+        val mappedIndices = table.indices
 
         existingTableIndices.forEach { index ->
             mappedIndices.firstOrNull { it.onlyNameDiffer(index) }?.let {

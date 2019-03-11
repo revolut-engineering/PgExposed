@@ -1,6 +1,5 @@
 package com.revolut.pgexposed.sql
 
-import com.revolut.pgexposed.sql.Transaction
 import com.revolut.pgexposed.sql.postgres.currentDialect
 import com.revolut.pgexposed.sql.postgres.currentDialectIfAvailable
 import java.time.LocalDateTime
