@@ -1,7 +1,5 @@
 package com.revolut.pgexposed.sql
 
-import com.revolut.pgexposed.sql.transactions.TransactionManager
-import com.revolut.pgexposed.sql.postgres.PostgreSQLDialect
 import com.revolut.pgexposed.sql.postgres.PostgresFunctionProvider
 import com.revolut.pgexposed.sql.postgres.currentDialect
 import com.revolut.pgexposed.sql.tables.DMLTestsData
@@ -147,8 +145,8 @@ class DDLTests : DatabaseTestsBase() {
 
     @Test fun unnamedTableWithQuotesSQL() {
         withTables(UnNamedTable) {
-            assertEquals("CREATE TABLE IF NOT EXISTS unnamed (${"id".inProperCase()} " +
-                    "INT PRIMARY KEY, ${"name".inProperCase()} VARCHAR(42) NOT NULL)", UnNamedTable.ddl)
+            assertEquals("CREATE TABLE IF NOT EXISTS unnamed (id " +
+                    "INT PRIMARY KEY, name VARCHAR(42) NOT NULL)", UnNamedTable.ddl)
         }
     }
 
@@ -157,7 +155,7 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withDb {
-            assertEquals("CREATE TABLE IF NOT EXISTS ${"test_named_table".inProperCase()}", TestTable.ddl)
+            assertEquals("CREATE TABLE IF NOT EXISTS test_named_table", TestTable.ddl)
             DMLTestsData.Users.select {
                 exists(DMLTestsData.UserData.select { DMLTestsData.Users.id eq DMLTestsData.UserData.user_id })
             }
@@ -169,16 +167,14 @@ class DDLTests : DatabaseTestsBase() {
             val id = integer("id").autoIncrement()
             val name = varchar("name", 42).primaryKey()
             val age = integer("age").nullable()
-            // not applicable in H2 database
-            //            val testCollate = varchar("testCollate", 2, "ascii_general_ci")
         }
 
         withTables(tables = *arrayOf(TestTable)) {
             val shortAutoIncType = "SERIAL"
 
-            assertEquals("CREATE TABLE IF NOT EXISTS " + "${"different_column_types".inProperCase()} " +
-                    "(${"id".inProperCase()} $shortAutoIncType NOT NULL, ${"name".inProperCase()} VARCHAR(42) PRIMARY KEY, " +
-                    "${"age".inProperCase()} INT NULL)", TestTable.ddl)
+            assertEquals("CREATE TABLE IF NOT EXISTS different_column_types " +
+                    "(id $shortAutoIncType NOT NULL, name VARCHAR(42) PRIMARY KEY, " +
+                    "age INT NULL)", TestTable.ddl)
         }
     }
 
@@ -190,9 +186,9 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(tables = *arrayOf(TestTable)) {
-            assertEquals("CREATE TABLE IF NOT EXISTS " + "${"with_different_column_types".inProperCase()} " +
-                    "(${"id".inProperCase()} INT, ${"name".inProperCase()} VARCHAR(42), ${"age".inProperCase()} INT NULL, " +
-                    "CONSTRAINT pk_with_different_column_types PRIMARY KEY (${"id".inProperCase()}, ${"name".inProperCase()}))", TestTable.ddl)
+            assertEquals("CREATE TABLE IF NOT EXISTS with_different_column_types " +
+                    "(id INT, name VARCHAR(42), age INT NULL, " +
+                    "CONSTRAINT pk_with_different_column_types PRIMARY KEY (id, name))", TestTable.ddl)
         }
     }
 
@@ -220,16 +216,16 @@ class DDLTests : DatabaseTestsBase() {
         withTables(TestTable) {
             val dtType = "TIMESTAMP"
             assertEquals("CREATE TABLE " + "IF NOT EXISTS " +
-                    "${"t".inProperCase()} (" +
-                    "${"id".inProperCase()} SERIAL PRIMARY KEY, " +
-                    "${"s".inProperCase()} VARCHAR(100) DEFAULT 'test' NOT NULL, " +
-                    "${"sn".inProperCase()} VARCHAR(100) DEFAULT 'testNullable' NULL, " +
-                    "${"l".inProperCase()} BIGINT DEFAULT 42 NOT NULL, " +
-                    "${"c".inProperCase()} CHAR DEFAULT 'X' NOT NULL, " +
-                    "${"t1".inProperCase()} $dtType ${currentDT.itOrNull()}, " +
-                    "${"t2".inProperCase()} $dtType ${nowExpression.itOrNull()}, " +
-                    "${"t3".inProperCase()} $dtType ${dtLiteral.itOrNull()}, " +
-                    "${"t4".inProperCase()} DATE ${dtLiteral.itOrNull()}" +
+                    "${"t"} (" +
+                    "${"id"} SERIAL PRIMARY KEY, " +
+                    "${"s"} VARCHAR(100) DEFAULT 'test' NOT NULL, " +
+                    "${"sn"} VARCHAR(100) DEFAULT 'testNullable' NULL, " +
+                    "${"l"} BIGINT DEFAULT 42 NOT NULL, " +
+                    "${"c"} CHAR DEFAULT 'X' NOT NULL, " +
+                    "${"t1"} $dtType ${currentDT.itOrNull()}, " +
+                    "${"t2"} $dtType ${nowExpression.itOrNull()}, " +
+                    "${"t3"} $dtType ${dtLiteral.itOrNull()}, " +
+                    "${"t4"} DATE ${dtLiteral.itOrNull()}" +
                     ")", TestTable.ddl)
 
             val resultRow = TestTable.insert {  }
@@ -261,7 +257,7 @@ class DDLTests : DatabaseTestsBase() {
 
         withTables(t) {
             val alter = SchemaUtils.createIndex(t.indices[0])
-            assertEquals("CREATE INDEX ${"t1_name".inProperCase()} ON ${"t1".inProperCase()} (${"name".inProperCase()})", alter)
+            assertEquals("CREATE INDEX ${"t1_name"} ON ${"t1"} (${"name"})", alter)
         }
     }
 
@@ -279,11 +275,11 @@ class DDLTests : DatabaseTestsBase() {
 
         withTables(t) {
             val a1 = SchemaUtils.createIndex(t.indices[0])
-            assertEquals("CREATE INDEX ${"t2_name".inProperCase()} ON ${"t2".inProperCase()} (${"name".inProperCase()})", a1)
+            assertEquals("CREATE INDEX ${"t2_name"} ON ${"t2"} (${"name"})", a1)
 
             val a2 = SchemaUtils.createIndex(t.indices[1])
-            assertEquals("CREATE INDEX ${"t2_lvalue_rvalue".inProperCase()} ON ${"t2".inProperCase()} " +
-                    "(${"lvalue".inProperCase()}, ${"rvalue".inProperCase()})", a2)
+            assertEquals("CREATE INDEX ${"t2_lvalue_rvalue"} ON ${"t2"} " +
+                    "(${"lvalue"}, ${"rvalue"})", a2)
         }
     }
 
@@ -295,7 +291,7 @@ class DDLTests : DatabaseTestsBase() {
 
         withTables(t) {
             val alter = SchemaUtils.createIndex(t.indices[0])
-            assertEquals("ALTER TABLE ${"t1".inProperCase()} ADD CONSTRAINT ${"t1_name_unique".inProperCase()} UNIQUE (${"name".inProperCase()})", alter)
+            assertEquals("ALTER TABLE t1 ADD CONSTRAINT t1_name_unique UNIQUE (name)", alter)
         }
     }
 
@@ -307,7 +303,7 @@ class DDLTests : DatabaseTestsBase() {
 
         withTables(t) {
             val alter = SchemaUtils.createIndex(t.indices[0])
-            assertEquals("ALTER TABLE ${"t1".inProperCase()} ADD CONSTRAINT ${"U_T1_NAME"} UNIQUE (${"name".inProperCase()})", alter)
+            assertEquals("ALTER TABLE t1 ADD CONSTRAINT ${"U_T1_NAME"} UNIQUE (${"name"})", alter)
         }
     }
 
@@ -319,11 +315,11 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(t) {
-            val id1ProperName = t.id1.name.inProperCase()
-            val id2ProperName = t.id2.name.inProperCase()
+            val id1ProperName = t.id1.name.toLowerCase()
+            val id2ProperName = t.id2.name.toLowerCase()
 
             assertEquals(
-                    "CREATE TABLE IF NOT EXISTS " + "${tableName.inProperCase()} (" +
+                    "CREATE TABLE IF NOT EXISTS " + "${tableName.toLowerCase()} (" +
                             "${t.columns.joinToString { it.descriptionDdl() }}, " +
                             "CONSTRAINT pk_$tableName PRIMARY KEY ($id1ProperName, $id2ProperName)" +
                             ")",
@@ -339,10 +335,10 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(tables = *arrayOf(t)) {
-            val tableProperName = tableName.inProperCase()
-            val id1ProperName = t.id1.name.inProperCase()
+            val tableProperName = tableName.toLowerCase()
+            val id1ProperName = t.id1.name.toLowerCase()
             val ddlId1 = t.id1.ddl
-            val id2ProperName = t.id2.name.inProperCase()
+            val id2ProperName = t.id2.name.toLowerCase()
             val ddlId2 = t.id2.ddl
 
             assertEquals(1, ddlId1.size)
@@ -366,8 +362,8 @@ class DDLTests : DatabaseTestsBase() {
         withTables(t) {
             val indexAlter = SchemaUtils.createIndex(t.indices[0])
             val uniqueAlter = SchemaUtils.createIndex(t.indices[1])
-            assertEquals("CREATE INDEX ${"t1_name_type".inProperCase()} ON ${"t1".inProperCase()} (${"name".inProperCase()}, ${"type".inProperCase()})", indexAlter)
-            assertEquals("ALTER TABLE ${"t1".inProperCase()} ADD CONSTRAINT ${"t1_type_name_unique".inProperCase()} UNIQUE (${"type".inProperCase()}, ${"name".inProperCase()})", uniqueAlter)
+            assertEquals("CREATE INDEX ${"t1_name_type"} ON ${"t1"} (${"name"}, ${"type"})", indexAlter)
+            assertEquals("ALTER TABLE ${"t1"} ADD CONSTRAINT ${"t1_type_name_unique"} UNIQUE (${"type"}, ${"name"})", uniqueAlter)
         }
     }
 
@@ -384,8 +380,8 @@ class DDLTests : DatabaseTestsBase() {
         withTables(t) {
             val indexAlter = SchemaUtils.createIndex(t.indices[0])
             val uniqueAlter = SchemaUtils.createIndex(t.indices[1])
-            assertEquals("CREATE INDEX ${"I_T1_NAME_TYPE"} ON ${"t1".inProperCase()} (${"name".inProperCase()}, ${"type".inProperCase()})", indexAlter)
-            assertEquals("ALTER TABLE ${"t1".inProperCase()} ADD CONSTRAINT ${"U_T1_TYPE_NAME"} UNIQUE (${"type".inProperCase()}, ${"name".inProperCase()})", uniqueAlter)
+            assertEquals("CREATE INDEX I_T1_NAME_TYPE ON t1 (name, type)", indexAlter)
+            assertEquals("ALTER TABLE t1 ADD CONSTRAINT U_T1_TYPE_NAME UNIQUE (type, name)", uniqueAlter)
         }
     }
 
@@ -436,7 +432,7 @@ class DDLTests : DatabaseTestsBase() {
 
         withDb {
             SchemaUtils.createMissingTablesAndColumns(initialTable)
-            assertEquals("ALTER TABLE ${tableName.inProperCase()} ADD ${"id".inProperCase()} ${t.id.columnType.sqlType()} PRIMARY KEY", t.id.ddl.first())
+            assertEquals("ALTER TABLE ${tableName.toLowerCase()} ADD id ${t.id.columnType.sqlType()} PRIMARY KEY", t.id.ddl.first())
             assertEquals(1, currentDialect.tableColumns(t).getValue(t).size)
             SchemaUtils.createMissingTablesAndColumns(t)
             assertEquals(2, currentDialect.tableColumns(t).getValue(t).size)
@@ -444,7 +440,7 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(tables = *arrayOf(initialTable)) {
-            assertEquals("ALTER TABLE ${tableName.inProperCase()} ADD ${"id".inProperCase()} ${t.id.columnType.sqlType()} PRIMARY KEY", t.id.ddl)
+            assertEquals("ALTER TABLE ${tableName.toLowerCase()} ADD id ${t.id.columnType.sqlType()} PRIMARY KEY", t.id.ddl)
             assertEquals(1, currentDialect.tableColumns(t).getValue(t).size)
             SchemaUtils.createMissingTablesAndColumns(t)
             assertEquals(2, currentDialect.tableColumns(t).getValue(t).size)
@@ -617,10 +613,21 @@ class DDLTests : DatabaseTestsBase() {
             }
         }
     }
-}
 
-private fun String.inProperCase(): String = TransactionManager.currentOrNull()?.let {
-    (currentDialect as? PostgreSQLDialect)?.run {
-        this@inProperCase.inProperCase
+    @Test fun testInnerJoinWithMultipleForeignKeys() {
+        val Users = object : Table("IntIdTable") {
+            val id = integer("id").autoIncrement("int_id_seq").primaryKey()
+        }
+
+        val Subscriptions = object : Table("LongIdTable") {
+            val id = long("id").autoIncrement("long_id_seq").primaryKey()
+            val user = integer("user").references(Users.id, onDelete = ReferenceOption.NO_ACTION)
+            val adminBy = integer("adminBy").references(Users.id).nullable()
+        }
+
+        withTables(Subscriptions) {
+            val query = Subscriptions.join(Users, JoinType.INNER, additionalConstraint = {Subscriptions.user eq Users.id}).selectAll()
+            assertEquals(0, query.count())
+        }
     }
-} ?: this
+}
