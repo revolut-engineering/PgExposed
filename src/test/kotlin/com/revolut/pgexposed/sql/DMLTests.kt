@@ -1,12 +1,13 @@
 package com.revolut.pgexposed.sql
 
 import com.revolut.pgexposed.exceptions.UnsupportedByDialectException
+import com.revolut.pgexposed.sql.postgres.DatabaseDialect
+import com.revolut.pgexposed.sql.postgres.PostgreSQLDialect
+import com.revolut.pgexposed.sql.statements.InsertStatement
+import com.revolut.pgexposed.sql.tables.DMLTestsData
 import com.revolut.pgexposed.sql.tables.DMLTestsData.BIG_DECIMAL_VALUE
 import com.revolut.pgexposed.sql.tables.DMLTestsData.ST_PETERSBURG
 import com.revolut.pgexposed.sql.tables.DMLTestsData.today
-import com.revolut.pgexposed.sql.postgres.DatabaseDialect
-import com.revolut.pgexposed.sql.postgres.PostgreSQLDialect
-import com.revolut.pgexposed.sql.tables.DMLTestsData
 import com.revolut.pgexposed.sql.tables.OrgMemberships
 import com.revolut.pgexposed.sql.tables.Orgs
 import com.revolut.pgexposed.sql.transactions.TransactionManager
@@ -1606,5 +1607,50 @@ class DMLTests : DatabaseTestsBase() {
             assertEquals(allSities.size, cities.select { Op.TRUE }.count())
         }
     }
-}
 
+    private fun DMLTestsData.Misc.checkInsert(row: InsertStatement<Number>, n: Int, nn: Int?, d: LocalDateTime, dn: LocalDateTime?,
+                                              t: LocalDateTime, tn: LocalDateTime?, e: DMLTestsData.E, en: DMLTestsData.E?,
+                                              es: DMLTestsData.E, esn: DMLTestsData.E?, s: String, sn: String?,
+                                              dc: BigDecimal, dcn: BigDecimal?, fcn: Float?, dblcn: Double?) {
+        assertEquals(row[this.n], n)
+        assertEquals(row[this.nn], nn)
+        assertEqualDateTime(row[this.d], d)
+        assertEqualDateTime(row[this.dn], dn)
+        assertEqualDateTime(row[this.t], t)
+        assertEqualDateTime(row[this.tn], tn)
+        assertEquals(row[this.e], e)
+        assertEquals(row[this.en], en)
+        assertEquals(row[this.es], es)
+        assertEquals(row[this.esn], esn)
+        assertEquals(row[this.s], s)
+        assertEquals(row[this.sn], sn)
+        assertEquals(row[this.dc], dc)
+        assertEquals(row[this.dcn], dcn)
+        assertEquals(row[this.fcn], fcn)
+        assertEquals(row[this.dblcn], dblcn)
+    }
+
+    @Test
+    fun testInsertGet01() {
+        val tbl = DMLTestsData.Misc
+        val date = today
+        val time = LocalDateTime.now()
+
+        withTables(tbl) {
+            val row = tbl.insert {
+                it[n] = 42
+                it[d] = date
+                it[t] = time
+                it[e] = DMLTestsData.E.ONE
+                it[es] = DMLTestsData.E.ONE
+                it[s] = "test"
+                it[dc] = BigDecimal("239.42")
+                it[char] = '('
+            }
+
+            tbl.checkInsert(row, 42, null, date, null, time, null, DMLTestsData.E.ONE, null, DMLTestsData.E.ONE,
+                    null, "test", null, BigDecimal("239.42"), null, null, null)
+            assertEquals('(', row[tbl.char])
+        }
+    }
+}
