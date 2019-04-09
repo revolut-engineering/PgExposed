@@ -18,7 +18,7 @@ class ResultRow(internal val fieldIndex: Map<Expression<*>, Int>) {
      * @param c expression to evaluate
      * @throws IllegalStateException if expression is not in record set or if result value is uninitialized
      *
-     * @see [tryGet] to get null in the cases an exception would be thrown
+     * @see [getOrNull] to get null in the cases an exception would be thrown
      */
     @Suppress("UNCHECKED_CAST")
     operator fun <T> get(c: Expression<T>): T {
@@ -44,7 +44,7 @@ class ResultRow(internal val fieldIndex: Map<Expression<*>, Int>) {
 
     fun <T> hasValue(c: Expression<T>): Boolean = fieldIndex[c]?.let{ data[it] != NotInitializedValue } ?: false
 
-    fun <T> tryGet(c: Expression<T>): T? = if (hasValue(c)) get(c) else null
+    fun <T> getOrNull(c: Expression<T>): T? = if (hasValue(c)) get(c) else null
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> getRaw(c: Expression<T>): T? =
