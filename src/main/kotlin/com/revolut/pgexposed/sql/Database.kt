@@ -24,8 +24,7 @@ class Database private constructor(val connector: () -> Connection) {
     }
 
     val url: String by lazy { metadata.url }
-    val dialect = Database.dialect
-    val vendor: String get() = dialect.name
+    val dialect = PostgreSQLDialect()
 
     val version by lazy {
         metadata.let { BigDecimal("${it.databaseMajorVersion}.${it.databaseMinorVersion}") }
@@ -64,8 +63,6 @@ class Database private constructor(val connector: () -> Connection) {
     private fun Char.isIdentifierStart(): Boolean = this in 'a'..'z' || this in 'A'..'Z' || this == '_' || this in extraNameCharacters
 
     companion object {
-        private val dialect = PostgreSQLDialect()
-
         private fun doConnect(getNewConnection: () -> Connection, setupConnection: (Connection) -> Unit = {},
                     manager: (Database) -> TransactionManager = { ThreadLocalTransactionManager(it, DEFAULT_ISOLATION_LEVEL, DEFAULT_REPETITION_ATTEMPTS) }
         ): Database {

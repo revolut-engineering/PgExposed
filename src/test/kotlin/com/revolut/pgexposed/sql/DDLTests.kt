@@ -311,6 +311,48 @@ class DDLTests : DatabaseTestsBase() {
         }
     }
 
+    @Test fun testCompositePrimaryKeyCreateTable() {
+        val tableName = "Foo"
+        val t = object : Table(tableName) {
+            val id1 = integer("id1").primaryKey()
+            val id2 = integer("id2").primaryKey()
+        }
+
+        withTables(t) {
+            val id1ProperName = t.id1.name.inProperCase()
+            val id2ProperName = t.id2.name.inProperCase()
+
+            assertEquals(
+                    "CREATE TABLE IF NOT EXISTS " + "${tableName.inProperCase()} (" +
+                            "${t.columns.joinToString { it.descriptionDdl() }}, " +
+                            "CONSTRAINT pk_$tableName PRIMARY KEY ($id1ProperName, $id2ProperName)" +
+                            ")",
+                    t.ddl)
+        }
+    }
+
+    @Test fun testAddCompositePrimaryKeyToTable() {
+        val tableName = "Foo"
+        val t = object : Table(tableName) {
+            val id1 = integer("id1").primaryKey()
+            val id2 = integer("id2").primaryKey()
+        }
+
+        withTables(tables = *arrayOf(t)) {
+            val tableProperName = tableName.inProperCase()
+            val id1ProperName = t.id1.name.inProperCase()
+            val ddlId1 = t.id1.ddl
+            val id2ProperName = t.id2.name.inProperCase()
+            val ddlId2 = t.id2.ddl
+
+            assertEquals(1, ddlId1.size)
+            assertEquals("ALTER TABLE $tableProperName ADD ${t.id1.descriptionDdl()}", ddlId1.first())
+
+            assertEquals(1, ddlId2.size)
+            assertEquals("ALTER TABLE $tableProperName ADD ${t.id2.descriptionDdl()}, ADD CONSTRAINT pk_$tableName PRIMARY KEY ($id1ProperName, $id2ProperName)", ddlId2.first())
+        }
+    }
+
     @Test fun testMultiColumnIndex() {
         val t = object : Table("t1") {
             val type = varchar("type", 255)

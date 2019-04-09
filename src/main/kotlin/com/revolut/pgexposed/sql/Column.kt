@@ -35,9 +35,9 @@ class Column<T>(val table: Table, val name: String, override val columnType: ICo
 
     override fun createStatement(): List<String> {
         val alterTablePrefix = "ALTER TABLE ${TransactionManager.current().identity(table)} ADD"
-        val isLastColumnInPK = indexInPK != null && indexInPK == table.columns.mapNotNull { indexInPK }.max()
+        val isLastColumnInPK = indexInPK != null && indexInPK == table.columns.mapNotNull { it.indexInPK }.max()
         val columnDefinition = when {
-            !isOneColumnPK() && isLastColumnInPK -> ", ADD ${table.primaryKeyConstraint()}"
+            !isOneColumnPK() && isLastColumnInPK -> descriptionDdl() + ", ADD ${table.primaryKeyConstraint()}"
             else -> descriptionDdl()
         }
 
