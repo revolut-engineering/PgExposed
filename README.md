@@ -31,8 +31,8 @@ Currently supported database dialects:
 
 ## SQL DSL sample:
 ```kotlin
-import org.pgexposed.sql.*
-import org.pgexposed.sql.transactions.transaction
+import com.revolut.pgexposed.sql.*
+import com.revolut.pgexposed.sql.transactions.transaction
 
 object Users : Table() {
     val id = varchar("id", 10).primaryKey() // Column<String>
