@@ -13,9 +13,6 @@ It does have two layers of database access: typesafe SQL wrapping DSL and lightw
 
 maven {
     url  "https://dl.bintray.com/revolut/revolut"
-    content {
-        includeGroupByRegex "com\\.revolut.*"
-    }
     mavenContent {
         releasesOnly()
     }
